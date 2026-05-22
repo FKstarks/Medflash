@@ -1615,7 +1615,7 @@ window.pinPress = function(digit){
   if(PIN_ENTRY.length >= 6) return;
   PIN_ENTRY += digit;
   updatePinDots();
-  if(PIN_ENTRY.length >= 4) setTimeout(checkPin, 150);
+  if(PIN_ENTRY.length >= 6) setTimeout(checkPin, 150);
 };
 
 window.pinDelete = function(){
@@ -1633,6 +1633,7 @@ function updatePinDots(){
 
 async function checkPin(){
   var hash = await sha256(PIN_ENTRY);
+  console.log('Hash généré:', hash); // debug
   try{
     var ref = doc(db,'pins','main');
     var snap = await getDoc(ref);

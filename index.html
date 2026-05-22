@@ -1633,10 +1633,12 @@ function updatePinDots(){
 
 async function checkPin(){
   var hash = await sha256(PIN_ENTRY);
-  console.log('Hash généré:', hash); // debug
+  console.log('Hash généré:', hash);
   try{
     var ref = doc(db,'pins','main');
     var snap = await getDoc(ref);
+    console.log('Document existe:', snap.exists());
+    if(snap.exists()) console.log('Hash Firestore:', snap.data().hash);
     if(snap.exists() && snap.data().hash === hash){
       IS_UNLOCKED = true;
       showAppScreen();

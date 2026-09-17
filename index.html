@@ -6,8 +6,17 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#0f1117">
+<meta name="theme-color" id="themeColorMeta" content="#0f1117">
 <title>MedFlash</title>
+
+<!-- ===== PWA ===== -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="application-name" content="MedFlash">
+<meta name="apple-mobile-web-app-title" content="MedFlash">
+<meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -2778,7 +2787,7 @@ document.querySelectorAll('.overlay').forEach(function(o){o.addEventListener('cl
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut as fbSignOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA9_Wu-lm0KRgiISNM58ViaNS2AlbxjEqc",
@@ -2791,7 +2800,17 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+// Cache persistant : lecture/ecriture possibles hors connexion,
+// les ecritures en attente sont renvoyees automatiquement au retour du reseau.
+let db;
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
+} catch (e) {
+  console.warn('Cache persistant indisponible, mode en ligne seul', e);
+  db = initializeFirestore(app, {});
+}
 const provider = new GoogleAuthProvider();
 
 var CURRENT_USER = null;
@@ -2838,7 +2857,13 @@ async function loadFromCloud(uid){
     var snap = await getDoc(ref);
     if(snap.exists()){
       var data=snap.data();
-      if(data&&data.folders) D.folders=data.folders;
+      if(data&&data.folders){
+        D.folders=data.folders;
+        // On ecrit tout de suite dans localStorage : sinon init() -> dbLoad()
+        // ecraserait les donnees du cloud avec la copie locale (perimee sur un
+        // autre appareil). C'est ce qui cassait la sync entre Mac / iPad / iPhone.
+        try{ localStorage.setItem('mf3', JSON.stringify(D)); }catch(e){}
+      }
     } else {
       await saveToCloud(uid);
     }
@@ -2881,6 +2906,134 @@ onAuthStateChanged(auth, async function(user){
     }
   }
 });
+</script>
+
+<!-- ===== PWA : service worker, etat reseau, invite d'installation ===== -->
+<style>
+#pwaBar{position:fixed;left:50%;transform:translateX(-50%) translateY(140%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:9999;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 28px);padding:11px 16px;border-radius:14px;border:1px solid var(--bd);background:var(--s1);color:var(--tx);box-shadow:var(--sh);font-family:'DM Sans',sans-serif;font-size:14px;transition:transform .32s cubic-bezier(.4,0,.2,1);pointer-events:none}
+#pwaBar.show{transform:translateX(-50%) translateY(0);pointer-events:auto}
+#pwaBar .pwa-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+#pwaBar .pwa-txt{line-height:1.35}
+#pwaBar button{padding:6px 13px;border-radius:9px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;background:linear-gradient(135deg,var(--ac),#5b52f0);color:#fff;white-space:nowrap}
+#pwaBar .pwa-close{background:none;color:var(--tx3);font-size:18px;font-weight:400;padding:0 2px;line-height:1}
+</style>
+<div id="pwaBar"></div>
+<script>
+(function(){
+  var bar = document.getElementById('pwaBar');
+  var hideTimer = null;
+
+  function showBar(html, opts){
+    opts = opts || {};
+    clearTimeout(hideTimer);
+    bar.innerHTML = html;
+    bar.classList.add('show');
+    var close = bar.querySelector('.pwa-close');
+    if(close) close.onclick = hideBar;
+    if(opts.action){
+      var b = bar.querySelector('button.pwa-action');
+      if(b) b.onclick = opts.action;
+    }
+    if(opts.timeout) hideTimer = setTimeout(hideBar, opts.timeout);
+  }
+  function hideBar(){ bar.classList.remove('show'); }
+
+  /* ---------- 1. Service worker ---------- */
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js', {scope: './'}).then(function(reg){
+
+        // Une nouvelle version est prete -> on propose de recharger
+        function watch(sw){
+          if(!sw) return;
+          sw.addEventListener('statechange', function(){
+            if(sw.state === 'installed' && navigator.serviceWorker.controller){
+              showBar('<span class="pwa-dot" style="background:var(--ac2)"></span>'+
+                      '<span class="pwa-txt">Nouvelle version disponible</span>'+
+                      '<button class="pwa-action">Recharger</button>'+
+                      '<button class="pwa-close">&times;</button>',
+                      {action: function(){ sw.postMessage('SKIP_WAITING'); }});
+            }
+          });
+        }
+        watch(reg.waiting);
+        reg.addEventListener('updatefound', function(){ watch(reg.installing); });
+
+        // Verifie les mises a jour au retour dans l'app
+        document.addEventListener('visibilitychange', function(){
+          if(document.visibilityState === 'visible') reg.update();
+        });
+      }).catch(function(e){ console.warn('SW non enregistre', e); });
+
+      var reloading = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function(){
+        if(reloading) return;
+        reloading = true;
+        window.location.reload();
+      });
+    });
+  }
+
+  /* ---------- 2. Etat du reseau ---------- */
+  window.addEventListener('offline', function(){
+    showBar('<span class="pwa-dot" style="background:var(--ye)"></span>'+
+            '<span class="pwa-txt">Hors connexion &middot; tes revisions sont enregistrees et se synchroniseront au retour du reseau</span>'+
+            '<button class="pwa-close">&times;</button>');
+  });
+  window.addEventListener('online', function(){
+    showBar('<span class="pwa-dot" style="background:var(--gr)"></span>'+
+            '<span class="pwa-txt">Reconnecte &middot; synchronisation en cours</span>',
+            {timeout: 3200});
+  });
+
+  /* ---------- 3. Barre de statut accordee au theme de l'app ---------- */
+  var meta = document.getElementById('themeColorMeta');
+  function syncThemeColor(){
+    if(meta) meta.setAttribute('content', document.body.classList.contains('light') ? '#f4f5f9' : '#0f1117');
+  }
+  syncThemeColor();
+  new MutationObserver(syncThemeColor).observe(document.body, {attributes:true, attributeFilter:['class']});
+
+  /* ---------- 4. Invite d'installation ---------- */
+  var standalone = window.matchMedia('(display-mode: standalone)').matches ||
+                   window.navigator.standalone === true;
+
+  // Android / Chrome / Edge : bouton natif
+  var deferred = null;
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    deferred = e;
+    if(standalone || localStorage.getItem('mf3_install_hint') === 'off') return;
+    setTimeout(function(){
+      showBar('<span class="pwa-dot" style="background:var(--ac)"></span>'+
+              '<span class="pwa-txt">Installer MedFlash sur cet appareil ?</span>'+
+              '<button class="pwa-action">Installer</button>'+
+              '<button class="pwa-close">&times;</button>',
+              {action: function(){
+                 hideBar();
+                 localStorage.setItem('mf3_install_hint','off');
+                 deferred.prompt();
+                 deferred = null;
+               }});
+    }, 2500);
+  });
+  window.addEventListener('appinstalled', function(){
+    localStorage.setItem('mf3_install_hint','off');
+    hideBar();
+  });
+
+  // iOS / iPadOS : pas d'API, on explique la manip une seule fois
+  var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if(iOS && !standalone && localStorage.getItem('mf3_install_hint') !== 'off'){
+    setTimeout(function(){
+      showBar('<span class="pwa-dot" style="background:var(--ac)"></span>'+
+              '<span class="pwa-txt">Ajoute MedFlash a ton ecran d\'accueil : bouton <strong>Partager</strong> puis <strong>Sur l\'ecran d\'accueil</strong></span>'+
+              '<button class="pwa-close">&times;</button>');
+      localStorage.setItem('mf3_install_hint','off');
+    }, 3000);
+  }
+})();
 </script>
 </body>
 </html>

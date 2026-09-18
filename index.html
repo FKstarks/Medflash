@@ -678,8 +678,52 @@ Varus équin</div>
 // ════════════════════════════════════════
 // DATA & STATE
 // ════════════════════════════════════════
-var D={folders:[]};
+var D={folders:[],progress:{}};
 var CUR={folder:null,deck:null};
+
+// ════════════════════════════════════════
+// PROGRESSION EN PAUSE — reprendre Révision / Apprentissage interrompus
+// Vit dans D.progress = { [deckId]: { study:{...}|absent, learn:{...}|absent } }
+// donc elle est sauvegardée et synchronisée exactement comme le reste (dbSave
+// écrit tout D en local, et le cloud suit avec le même débounce de 1,5s) —
+// on peut donc mettre un cours en pause sur un appareil et le reprendre sur un autre.
+// ════════════════════════════════════════
+function progSave(mode,data){
+  if(!CUR.deck)return;
+  if(!D.progress)D.progress={};
+  if(!D.progress[CUR.deck.id])D.progress[CUR.deck.id]={};
+  D.progress[CUR.deck.id][mode]=Object.assign({savedAt:Date.now()},data);
+  dbSave();
+}
+function progLoad(mode){
+  if(!CUR.deck||!D.progress)return null;
+  var d=D.progress[CUR.deck.id];
+  return (d&&d[mode])||null;
+}
+function progClear(mode){
+  if(!CUR.deck||!D.progress||!D.progress[CUR.deck.id])return;
+  delete D.progress[CUR.deck.id][mode];
+  dbSave();
+}
+function progAgoTxt(ts){
+  var m=Math.round((Date.now()-ts)/60000);
+  if(m<1)return 'à l\'instant';
+  if(m<60)return 'il y a '+m+' min';
+  var h=Math.round(m/60);
+  if(h<24)return 'il y a '+h+' h';
+  return 'il y a '+Math.round(h/24)+' j';
+}
+function pauseCardHtml(title,sub,onRestart,onResume){
+  return '<div class="empty" style="max-width:480px;margin:40px auto">'+
+    '<div class="empty-i">⏸️</div>'+
+    '<div class="empty-t">'+title+'</div>'+
+    '<div class="empty-s">'+sub+'</div>'+
+    '<div style="display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap">'+
+    '<button class="btn btn-ghost" onclick="'+onRestart+'">Recommencer depuis le début</button>'+
+    '<button class="btn btn-primary" onclick="'+onResume+'">Continuer ma progression</button>'+
+    '</div></div>';
+}
+
 var SEL_EMOJI='🧬',SEL_COLOR='#6c63ff';
 var J_SCHEDULE=[0,1,3,7,12,19];
 var EDIT_CARD_ID=null,EDIT_FOLDER_ID=null,EDIT_DECK_ID=null;
@@ -702,7 +746,7 @@ var TH_GOOD=75, TH_BAD=40;
 // ════════════════════════════════════════
 function dbSave(){try{localStorage.setItem('mf3',JSON.stringify(D));}catch(e){}}
 window.dbSave=dbSave;
-function dbLoad(){try{var r=localStorage.getItem('mf3');if(r){var p=JSON.parse(r);D.folders=p.folders||[];}}catch(e){}}
+function dbLoad(){try{var r=localStorage.getItem('mf3');if(r){var p=JSON.parse(r);D.folders=p.folders||[];D.progress=p.progress||{};}}catch(e){}}
 
 // ════════════════════════════════════════
 // DATES (tout en 'YYYY-MM-DD' local)
@@ -1213,7 +1257,7 @@ function switchTab(tab){
     document.getElementById('tab-'+t).classList.toggle('active',t===tab);
     document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).style.display=t===tab?'block':'none';
   });
-  if(tab==='study')startStudy();
+  if(tab==='study')studyEntry();
   if(tab==='learn')learnHome();
   if(tab==='eval')startEval();
   if(tab==='cards')renderCards();
@@ -1361,6 +1405,57 @@ function isHard(c){
 // ════════════════════════════════════════
 var ST={cards:[],idx:0,flipped:false,results:{},writes:{},filter:'order',writeMode:false,strict:false};
 
+function studyEntry(){
+  if(!CUR.deck)return;
+  var p=progLoad('study');
+  var cards=CUR.deck.cards||[];
+  document.getElementById('studyResult').style.display='none';
+  if(p&&p.order&&p.order.length&&cards.length&&p.idx<p.order.length){
+    document.getElementById('studyArea').style.display='block';
+    document.getElementById('studyArea').innerHTML=pauseCardHtml(
+      'Révision en pause',
+      'Tu t\'étais arrêté à la carte '+(p.idx+1)+' / '+p.order.length+' · '+progAgoTxt(p.savedAt),
+      "progClear('study');startStudy()",
+      'resumeStudy()'
+    );
+    return;
+  }
+  startStudy();
+}
+
+function resumeStudy(){
+  var p=progLoad('study');
+  if(!p){startStudy();return;}
+  var byId={};(CUR.deck.cards||[]).forEach(function(c){byId[c.id]=c;});
+  var cards=p.order.map(function(id){return byId[id];}).filter(Boolean);
+  if(!cards.length){startStudy();return;}
+  ST.cards=cards;
+  ST.idx=Math.min(p.idx,cards.length-1);
+  ST.results=p.results||{};
+  ST.writes=p.writes||{};
+  ST.filter=p.filter||'order';
+  ST.writeMode=!!p.writeMode;
+  ST.strict=!!p.strict;
+  ['order','shuffle','failed','hard'].forEach(function(k){
+    document.getElementById('tog'+k.charAt(0).toUpperCase()+k.slice(1)).classList.toggle('on',k===ST.filter);
+  });
+  document.getElementById('togWrite').classList.toggle('on',ST.writeMode);
+  document.getElementById('togStrictStudy').style.display=ST.writeMode?'':'none';
+  document.getElementById('togStrictStudy').classList.toggle('on',ST.strict);
+  document.getElementById('studyArea').style.display='block';
+  document.getElementById('studyArea').innerHTML='';
+  renderStudyCard();
+}
+
+function progSaveStudy(){
+  if(!CUR.deck||!ST.cards.length)return;
+  progSave('study',{
+    order:ST.cards.map(function(c){return c.id;}),
+    idx:ST.idx,results:ST.results,writes:ST.writes,
+    filter:ST.filter,writeMode:ST.writeMode,strict:ST.strict
+  });
+}
+
 function startStudy(){
   if(!CUR.deck)return;
   ST.flipped=false;ST.idx=0;
@@ -1412,6 +1507,7 @@ function renderStudyCard(){
     area.innerHTML='<div class="empty"><div class="empty-i">🃏</div><div class="empty-t">Aucune carte</div><div class="empty-s">Ajoute des cartes dans l\'onglet Cartes</div></div>';
     return;
   }
+  progSaveStudy();
   var card=ST.cards[ST.idx];
   var cur=ST.idx+1,tot=ST.cards.length;
   document.getElementById('studyCnt').textContent=cur+' / '+tot;
@@ -1570,6 +1666,7 @@ function verdictBox(pct,deck){
 }
 
 function showStudyResult(){
+  progClear('study');
   document.getElementById('studyArea').style.display='none';
   var box=document.getElementById('studyResult');
   box.style.display='block';
@@ -1640,6 +1737,27 @@ function learnHome(){
     area.innerHTML='<div class="empty"><div class="empty-i">📖</div><div class="empty-t">Aucune carte</div><div class="empty-s">Ajoute des cartes dans l\'onglet Cartes</div></div>';
     return;
   }
+  var p=progLoad('learn');
+  if(p&&p.queue&&p.queue.length&&p.qi<p.queue.length){
+    area.innerHTML=pauseCardHtml(
+      'Apprentissage en pause',
+      'Tu t\'étais arrêté à l\'étape '+(p.qi+1)+' / '+p.queue.length+' ('+(p.strict?'strict 🎯':'souple 🌿')+') · '+progAgoTxt(p.savedAt),
+      "progClear('learn');learnModeChoice()",
+      'resumeLearn()'
+    );
+    return;
+  }
+  learnModeChoice();
+}
+
+function learnModeChoice(){
+  if(!CUR.deck)return;
+  var cards=CUR.deck.cards||[];
+  var area=document.getElementById('learnArea');
+  if(!cards.length){
+    area.innerHTML='<div class="empty"><div class="empty-i">📖</div><div class="empty-t">Aucune carte</div><div class="empty-s">Ajoute des cartes dans l\'onglet Cartes</div></div>';
+    return;
+  }
   var relearnNote=CUR.deck.relearn?
     '<div class="verdict v-bad" style="max-width:760px;margin:0 auto 20px"><b>🔁 Réapprentissage recommandé</b>Ta dernière révision est passée sous les '+TH_BAD+'%. Refais un tour complet d\'apprentissage, puis les contrôles rapprochés déjà placés dans ton planning vérifieront que ça tient.</div>':'';
   area.innerHTML=relearnNote+
@@ -1661,6 +1779,34 @@ function learnHome(){
         '<div class="mc-ex">Ex. 7 signes fonctionnels attendus : tu en cites 6 → faux, et l\'appli te dit lequel manque.</div>'+
       '</div>'+
     '</div>';
+}
+
+function resumeLearn(){
+  var p=progLoad('learn');
+  if(!p){learnModeChoice();return;}
+  var byId={};(CUR.deck.cards||[]).forEach(function(c){byId[c.id]=c;});
+  var queue=p.queue.map(function(item){
+    return {type:item.type,num:item.num,s:{num:item.num,cards:item.ids.map(function(id){return byId[id];}).filter(Boolean)}};
+  });
+  LRN.strict=!!p.strict;
+  LRN.queue=queue;
+  LRN.qi=Math.min(p.qi,queue.length);
+  LRN.results=p.results||{};
+  LRN.writes=p.writes||{};
+  if(LRN.qi>=queue.length){renderLrnFinal();return;}
+  var item=queue[LRN.qi];
+  LRN.series=item.s.cards;LRN.snum=item.s.num;
+  LRN.si=(p.si||0)<LRN.series.length?(p.si||0):0;
+  if(item.type==='read')renderLrnRead();else renderLrnWrite();
+}
+
+function progSaveLearn(){
+  if(!CUR.deck||!LRN.queue.length)return;
+  progSave('learn',{
+    strict:LRN.strict,
+    queue:LRN.queue.map(function(item){return {type:item.type,num:item.num,ids:item.s.cards.map(function(c){return c.id;})};}),
+    qi:LRN.qi,si:LRN.si,results:LRN.results,writes:LRN.writes
+  });
 }
 
 function startLearn(strict){
@@ -1697,6 +1843,7 @@ function processLrn(){
 function renderLrnRead(){
   var cards=LRN.series,idx=LRN.si;
   if(idx>=cards.length){LRN.qi++;processLrn();return;}
+  progSaveLearn();
   var card=cards[idx];
   var tot=LRN.queue.length,done=LRN.qi;
   var dots=cards.map(function(_,i){return '<div class="sdot'+(i<idx?' done-ok':i===idx?' cur':'')+'"></div>';}).join('');
@@ -1715,7 +1862,7 @@ function renderLrnRead(){
     '<div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">'+
     '<button class="btn btn-primary" onclick="lrnReadNext()">Suivant →</button>'+
     (idx>0?'<button class="btn btn-ghost" onclick="lrnReadPrev()">← Précédent</button>':'')+
-    '<button class="btn btn-ghost" onclick="learnHome()">Changer de mode</button>'+
+    '<button class="btn btn-ghost" onclick="learnModeChoice()">Changer de mode</button>'+
     '</div>';
 }
 function lrnReadNext(){LRN.si++;if(LRN.si>=LRN.series.length){LRN.qi++;processLrn();}else renderLrnRead();}
@@ -1724,6 +1871,7 @@ function lrnReadPrev(){if(LRN.si>0){LRN.si--;renderLrnRead();}}
 function renderLrnWrite(){
   var cards=LRN.series,idx=LRN.si;
   if(idx>=cards.length){LRN.qi++;processLrn();return;}
+  progSaveLearn();
   var card=cards[idx];
   var ws=LRN.writes[card.id]||{};
   var tot=LRN.queue.length,done=LRN.qi;
@@ -1780,6 +1928,7 @@ function skipWrite(id){LRN.writes[id]={done:true,ok:false,ans:'',res:null};LRN.r
 function lrnWriteNext(){LRN.si++;if(LRN.si>=LRN.series.length){LRN.qi++;processLrn();}else renderLrnWrite();}
 
 function renderLrnFinal(){
+  progClear('learn');
   var tot=Object.keys(LRN.results).length;
   var yes=Object.values(LRN.results).filter(function(v){return v;}).length;
   var pct=tot?Math.round(yes/tot*100):0;
@@ -2915,6 +3064,7 @@ async function loadFromCloud(uid){
       var data=snap.data();
       if(data&&data.folders){
         D.folders=data.folders;
+        D.progress=data.progress||{};
         // On ecrit tout de suite dans localStorage : sinon init() -> dbLoad()
         // ecraserait les donnees du cloud avec la copie locale (perimee sur un
         // autre appareil). C'est ce qui cassait la sync entre Mac / iPad / iPhone.
@@ -2929,7 +3079,7 @@ async function loadFromCloud(uid){
 async function saveToCloud(uid){
   try{
     var ref = doc(db,'users',uid,'data','main');
-    await setDoc(ref,{folders:D.folders,updatedAt:Date.now()});
+    await setDoc(ref,{folders:D.folders,progress:D.progress||{},updatedAt:Date.now()});
   } catch(e){ console.error('Erreur sauvegarde:',e); }
 }
 

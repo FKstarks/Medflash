@@ -678,7 +678,7 @@ Varus équin</div>
 // ════════════════════════════════════════
 // DATA & STATE
 // ════════════════════════════════════════
-var D={folders:[],progress:{}};
+var D={folders:[],progress:{},examProgress:{}};
 var CUR={folder:null,deck:null};
 
 // ════════════════════════════════════════
@@ -698,7 +698,35 @@ function progSave(mode,data){
 function progLoad(mode){
   if(!CUR.deck||!D.progress)return null;
   var d=D.progress[CUR.deck.id];
-  return (d&&d[mode])||null;
+  var p=(d&&d[mode])||null;
+  if(!p)return null;
+  var hasKeys=function(o){return o&&Object.keys(o).length>0;};
+  var started;
+  if(mode==='learn') started=(p.qi>0)||(p.si>0)||hasKeys(p.results)||hasKeys(p.writes);
+  else if(mode==='eval') started=(p.qi>0)||(p.results&&p.results.length>0);
+  else started=(p.idx>0)||hasKeys(p.results)||hasKeys(p.writes);
+  return started?p:null;
+}
+
+// Progression de l'examen blanc — rattachée à la matière (CUR.folder), pas à un cours,
+// puisque l'examen pioche dans tous les cours de la matière à la fois.
+function examProgSave(data){
+  if(!CUR.folder)return;
+  if(!D.examProgress)D.examProgress={};
+  D.examProgress[CUR.folder.id]=Object.assign({savedAt:Date.now()},data);
+  dbSave();
+}
+function examProgLoad(){
+  if(!CUR.folder||!D.examProgress)return null;
+  var p=D.examProgress[CUR.folder.id]||null;
+  if(!p)return null;
+  var started=(p.qi>0)||(p.results&&p.results.length>0);
+  return started?p:null;
+}
+function examProgClear(){
+  if(!CUR.folder||!D.examProgress||!D.examProgress[CUR.folder.id])return;
+  delete D.examProgress[CUR.folder.id];
+  dbSave();
 }
 function progClear(mode){
   if(!CUR.deck||!D.progress||!D.progress[CUR.deck.id])return;
@@ -746,7 +774,7 @@ var TH_GOOD=75, TH_BAD=40;
 // ════════════════════════════════════════
 function dbSave(){try{localStorage.setItem('mf3',JSON.stringify(D));}catch(e){}}
 window.dbSave=dbSave;
-function dbLoad(){try{var r=localStorage.getItem('mf3');if(r){var p=JSON.parse(r);D.folders=p.folders||[];D.progress=p.progress||{};}}catch(e){}}
+function dbLoad(){try{var r=localStorage.getItem('mf3');if(r){var p=JSON.parse(r);D.folders=p.folders||[];D.progress=p.progress||{};D.examProgress=p.examProgress||{};}}catch(e){}}
 
 // ════════════════════════════════════════
 // DATES (tout en 'YYYY-MM-DD' local)
@@ -1259,7 +1287,7 @@ function switchTab(tab){
   });
   if(tab==='study')studyEntry();
   if(tab==='learn')learnHome();
-  if(tab==='eval')startEval();
+  if(tab==='eval')evalEntry();
   if(tab==='cards')renderCards();
   if(tab==='stats')renderStats();
 }
@@ -1449,6 +1477,8 @@ function resumeStudy(){
 
 function progSaveStudy(){
   if(!CUR.deck||!ST.cards.length)return;
+  var started=ST.idx>0||Object.keys(ST.results).length>0||Object.keys(ST.writes).length>0;
+  if(!started)return;
   progSave('study',{
     order:ST.cards.map(function(c){return c.id;}),
     idx:ST.idx,results:ST.results,writes:ST.writes,
@@ -1802,6 +1832,8 @@ function resumeLearn(){
 
 function progSaveLearn(){
   if(!CUR.deck||!LRN.queue.length)return;
+  var started=LRN.qi>0||LRN.si>0||Object.keys(LRN.results).length>0||Object.keys(LRN.writes).length>0;
+  if(!started)return;
   progSave('learn',{
     strict:LRN.strict,
     queue:LRN.queue.map(function(item){return {type:item.type,num:item.num,ids:item.s.cards.map(function(c){return c.id;})};}),
@@ -1955,6 +1987,37 @@ function renderLrnFinal(){
 // EVAL — QCM par cours
 // ════════════════════════════════════════
 var EV={qs:[],qi:0,sel:[],sub:false,results:[],scope:'deck'};
+
+function evalEntry(){
+  if(!CUR.deck)return;
+  var p=progLoad('eval');
+  if(p&&p.cardIds&&p.cardIds.length&&p.qi<p.cardIds.length){
+    document.getElementById('evalArea').innerHTML=pauseCardHtml(
+      'Évaluation en pause',
+      'Tu t\'étais arrêté à la question '+(p.qi+1)+' / '+p.cardIds.length+' · '+progAgoTxt(p.savedAt),
+      "progClear('eval');startEval()",
+      'resumeEval()'
+    );
+    return;
+  }
+  startEval();
+}
+
+function resumeEval(){
+  var p=progLoad('eval');
+  if(!p){startEval();return;}
+  var byId={};(CUR.deck.cards||[]).forEach(function(c){byId[c.id]=c;});
+  var qs=[];
+  for(var i=0;i<p.cardIds.length;i++){
+    var c=byId[p.cardIds[i]];
+    if(!c){qs=null;break;}
+    qs.push({card:c,opts:p.opts[i]});
+  }
+  if(!qs){toast('Le cours a changé depuis ton dernier passage — nouveau QCM');startEval();return;}
+  EV.scope='deck';EV.target='evalArea';
+  EV.qs=qs;EV.qi=Math.min(p.qi,qs.length-1);EV.results=p.results||[];
+  renderEvalQ();
+}
 
 function startEval(){
   if(!CUR.deck)return;
@@ -3065,6 +3128,7 @@ async function loadFromCloud(uid){
       if(data&&data.folders){
         D.folders=data.folders;
         D.progress=data.progress||{};
+        D.examProgress=data.examProgress||{};
         // On ecrit tout de suite dans localStorage : sinon init() -> dbLoad()
         // ecraserait les donnees du cloud avec la copie locale (perimee sur un
         // autre appareil). C'est ce qui cassait la sync entre Mac / iPad / iPhone.
@@ -3079,7 +3143,7 @@ async function loadFromCloud(uid){
 async function saveToCloud(uid){
   try{
     var ref = doc(db,'users',uid,'data','main');
-    await setDoc(ref,{folders:D.folders,progress:D.progress||{},updatedAt:Date.now()});
+    await setDoc(ref,{folders:D.folders,progress:D.progress||{},examProgress:D.examProgress||{},updatedAt:Date.now()});
   } catch(e){ console.error('Erreur sauvegarde:',e); }
 }
 

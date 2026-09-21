@@ -7,7 +7,7 @@
    - API Firebase (auth / Firestore) -> JAMAIS mis en cache, Firestore gère sa propre persistance
    Incrémente VERSION à chaque déploiement pour forcer le rafraîchissement du cache.
 */
-const VERSION = 'medflash-v1';
+const VERSION = 'medflash-v2';
 const CORE_CACHE = VERSION + '-core';
 const RUNTIME_CACHE = VERSION + '-runtime';
 
@@ -122,4 +122,47 @@ self.addEventListener('fetch', function (e) {
 
   // 4. Le reste : réseau, secours cache
   e.respondWith(fetch(req).catch(function () { return caches.match(req); }));
+});
+
+// ════════════════════════════════════════
+// NOTIFICATIONS PUSH (Firebase Cloud Messaging)
+// Reçoit les notifs envoyées par la Cloud Function planifiée, même app fermée.
+// ════════════════════════════════════════
+importScripts('https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/12.13.0/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+  apiKey: "AIzaSyA9_Wu-lm0KRgiISNM58ViaNS2AlbxjEqc",
+  projectId: "medflash-5cc34",
+  messagingSenderId: "28164879236",
+  appId: "1:28164879236:web:b00e5a0a753556fee323d1"
+});
+
+var messaging = firebase.messaging();
+
+// Affiche la notif quand elle arrive alors que l'app est fermée / en arrière-plan
+messaging.onBackgroundMessage(function (payload) {
+  var data = payload.notification || {};
+  var title = data.title || 'MedFlash';
+  var options = {
+    body: data.body || '',
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    data: { url: (payload.data && payload.data.url) || './' }
+  };
+  self.registration.showNotification(title, options);
+});
+
+// Clic sur la notif -> ouvre (ou refocus) MedFlash
+self.addEventListener('notificationclick', function (e) {
+  e.notification.close();
+  var targetUrl = (e.notification.data && e.notification.data.url) || './';
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      for (var i = 0; i < list.length; i++) {
+        if ('focus' in list[i]) return list[i].focus();
+      }
+      if (clients.openWindow) return clients.openWindow(targetUrl);
+    })
+  );
 });

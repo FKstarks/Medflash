@@ -360,6 +360,7 @@ body{-webkit-overflow-scrolling:touch}
   <div class="logo" onclick="goHome()">Med<span style="-webkit-text-fill-color:var(--tx2);font-weight:400">Flash</span></div>
   <div class="nav-r">
     <button class="theme-btn" id="btnCal" onclick="openCalendar()" title="Calendrier de révisions">🗓️</button>
+    <button class="theme-btn" id="btnNotif" onclick="toggleNotifPanel()" title="Notifications">🔔</button>
     <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Changer le thème">🌙</button>
     <button class="theme-btn" onclick="exportData()" title="Exporter toutes mes données" style="font-size:14px">📤</button>
     <label class="theme-btn" title="Importer des données" style="font-size:14px;cursor:pointer">
@@ -596,6 +597,31 @@ body{-webkit-overflow-scrolling:touch}
     <div class="m-btns">
       <button class="btn btn-ghost" onclick="closeModal('mDeck')">Annuler</button>
       <button class="btn btn-primary" id="mDeckSave" onclick="saveDeck()">Créer</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="mNotif">
+  <div class="modal" style="max-width:460px">
+    <h2>🔔 Notifications</h2>
+    <div id="notifStatusBox" style="font-size:14px;color:var(--tx2);margin-bottom:16px">Vérification…</div>
+    <div class="fgrp" id="notifHourBox" style="display:none">
+      <label class="flbl">Heure du rappel quotidien</label>
+      <select class="finp" id="notifHour">
+        <option value="7">7h00</option>
+        <option value="8" selected>8h00</option>
+        <option value="9">9h00</option>
+        <option value="12">12h00</option>
+        <option value="18">18h00</option>
+        <option value="19">19h00</option>
+        <option value="20">20h00</option>
+        <option value="21">21h00</option>
+      </select>
+      <div style="font-size:12px;color:var(--tx3);margin-top:6px">Chaque jour à cette heure, si des cartes sont dues, tu reçois une notification avec le détail.</div>
+    </div>
+    <div class="m-btns">
+      <button class="btn btn-ghost" onclick="closeModal('mNotif')">Fermer</button>
+      <button class="btn btn-primary" id="notifActionBtn" onclick="enableNotifs()">Activer les notifications</button>
     </div>
   </div>
 </div>
@@ -1988,6 +2014,32 @@ function renderLrnFinal(){
 // ════════════════════════════════════════
 var EV={qs:[],qi:0,sel:[],sub:false,results:[],scope:'deck'};
 
+// Sauvegarde la progression en pause pour Évaluation (par cours) et Examen (par matière),
+// sur le même principe que Révision/Apprentissage : ça vit dans D.progress / D.examProgress
+// et se synchronise donc automatiquement entre les appareils.
+function evProgSave(){
+  if(!EV.qs.length)return;
+  var started=(EV.qi>0)||(EV.results&&EV.results.length>0);
+  if(!started)return;
+  if(EV.scope==='deck'){
+    if(!CUR.deck)return;
+    progSave('eval',{
+      cardIds:EV.qs.map(function(q){return q.card.id;}),
+      opts:EV.qs.map(function(q){return q.opts;}),
+      qi:EV.qi,results:EV.results
+    });
+  } else if(EV.scope==='folder'){
+    if(!CUR.folder)return;
+    examProgSave({
+      cardIds:EV.qs.map(function(q){return q.card.id;}),
+      opts:EV.qs.map(function(q){return q.opts;}),
+      srcs:EV.qs.map(function(q){return q.src||'';}),
+      deckIds:EV.qs.map(function(q){return q.deckId||null;}),
+      qi:EV.qi,results:EV.results
+    });
+  }
+}
+
 function evalEntry(){
   if(!CUR.deck)return;
   var p=progLoad('eval');
@@ -2117,9 +2169,10 @@ function submitQ(){
   if(EV.scope==='deck')bumpCard(q.card.id,correct);
   document.getElementById('qsub').innerHTML='<button class="btn btn-primary" onclick="nextQ()">'+(EV.qi<EV.qs.length-1?'Suivant →':'Voir les résultats')+'</button>';
 }
-function nextQ(){EV.qi++;renderEvalQ();}
+function nextQ(){EV.qi++;evProgSave();renderEvalQ();}
 
 function renderEvalFinal(){
+  progClear('eval');
   var tot=EV.qs.length,yes=EV.results.filter(function(r){return r.ok;}).length;
   var pct=Math.round(yes/tot*100);
   document.getElementById('evalArea').innerHTML=
@@ -2145,7 +2198,39 @@ function openExam(){
   if(!CUR.folder)return;
   document.getElementById('bcExamFolder').textContent=CUR.folder.name;
   showScreen('sExam');
+  examEntry();
+}
+
+function examEntry(){
+  if(!CUR.folder)return;
+  var p=examProgLoad();
+  if(p&&p.cardIds&&p.cardIds.length&&p.qi<p.cardIds.length){
+    document.getElementById('examArea').innerHTML=pauseCardHtml(
+      'Examen en pause',
+      'Tu t\'étais arrêté à la question '+(p.qi+1)+' / '+p.cardIds.length+' · '+progAgoTxt(p.savedAt),
+      "examProgClear();examHome()",
+      'resumeExam()'
+    );
+    return;
+  }
   examHome();
+}
+
+function resumeExam(){
+  var p=examProgLoad();
+  if(!p){examHome();return;}
+  var byId={};
+  (CUR.folder.decks||[]).forEach(function(d){(d.cards||[]).forEach(function(c){byId[c.id]=c;});});
+  var qs=[];
+  for(var i=0;i<p.cardIds.length;i++){
+    var c=byId[p.cardIds[i]];
+    if(!c){qs=null;break;}
+    qs.push({card:c,opts:p.opts[i],src:(p.srcs||[])[i]||'',deckId:(p.deckIds||[])[i]||null});
+  }
+  if(!qs){toast('La matière a changé depuis ton dernier passage — nouvel examen');examHome();return;}
+  EV.scope='folder';EV.target='examArea';
+  EV.qs=qs;EV.qi=Math.min(p.qi,qs.length-1);EV.results=p.results||[];
+  renderEvalQ();
 }
 
 function examPool(){
@@ -2200,6 +2285,7 @@ function startExam(n){
 }
 
 function renderExamFinal(){
+  examProgClear();
   var tot=EV.qs.length,yes=EV.results.filter(function(r){return r.ok;}).length;
   var pct=Math.round(yes/tot*100);
   // score par cours
@@ -3009,6 +3095,7 @@ document.querySelectorAll('.overlay').forEach(function(o){o.addEventListener('cl
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut as fbSignOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-messaging.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA9_Wu-lm0KRgiISNM58ViaNS2AlbxjEqc",
@@ -3033,6 +3120,84 @@ try {
   db = initializeFirestore(app, {});
 }
 setPersistence(auth, browserLocalPersistence).catch(function(e){ console.warn('Persistence indisponible', e); });
+
+// ════════════════════════════════════════
+// NOTIFICATIONS (Firebase Cloud Messaging)
+// ════════════════════════════════════════
+// Clé VAPID à récupérer dans la console Firebase :
+// Project Settings -> Cloud Messaging -> Web Push certificates -> "Generate key pair"
+const VAPID_KEY = "COLLE_TA_CLE_VAPID_ICI";
+let messaging = null;
+try { messaging = getMessaging(app); } catch(e){ console.warn('FCM indisponible sur cet appareil', e); }
+
+function notifStatusText(){
+  if(!('Notification' in window)) return "Ton navigateur ne supporte pas les notifications.";
+  if(Notification.permission === 'denied') return "Notifications bloquées. Réactive-les dans les réglages de ton navigateur/appareil pour ce site.";
+  if(Notification.permission === 'granted') return "Notifications activées sur cet appareil ✓";
+  return "Pas encore activées sur cet appareil.";
+}
+
+window.toggleNotifPanel = function(){
+  var box=document.getElementById('notifStatusBox');
+  var hourBox=document.getElementById('notifHourBox');
+  var btn=document.getElementById('notifActionBtn');
+  box.textContent = notifStatusText();
+  var granted = ('Notification' in window) && Notification.permission==='granted';
+  hourBox.style.display = granted ? '' : 'none';
+  btn.textContent = granted ? "Mettre à jour l'heure" : 'Activer les notifications';
+  if(CURRENT_USER){
+    getDoc(doc(db,'users',CURRENT_USER.uid,'notif','main')).then(function(snap){
+      if(snap.exists() && snap.data().hour!=null){
+        document.getElementById('notifHour').value = String(snap.data().hour);
+      }
+    }).catch(function(){});
+  }
+  openModal('mNotif');
+};
+
+window.enableNotifs = async function(){
+  if(!CURRENT_USER){ toast("Connecte-toi d'abord"); return; }
+  if(!('Notification' in window) || !messaging){ toast('Notifications non supportées sur cet appareil'); return; }
+  var btn=document.getElementById('notifActionBtn');
+  btn.disabled=true;
+  try{
+    var perm = await Notification.requestPermission();
+    if(perm!=='granted'){
+      document.getElementById('notifStatusBox').textContent = notifStatusText();
+      toast('Permission refusée');
+      btn.disabled=false;
+      return;
+    }
+    var reg = await navigator.serviceWorker.ready;
+    var token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+    var hour = parseInt(document.getElementById('notifHour').value,10);
+    var ref = doc(db,'users',CURRENT_USER.uid,'notif','main');
+    var snap = await getDoc(ref).catch(function(){return null;});
+    var tokens = (snap && snap.exists() && snap.data().tokens) || {};
+    tokens[token] = true;
+    await setDoc(ref, {
+      tokens: tokens,
+      hour: hour,
+      tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris'
+    }, { merge: true });
+    document.getElementById('notifStatusBox').textContent = notifStatusText();
+    document.getElementById('notifHourBox').style.display='';
+    btn.textContent = "Mettre à jour l'heure";
+    toast('Notifications activées ✓');
+  }catch(e){
+    console.error(e);
+    toast('Erreur : notifications non activées');
+  }
+  btn.disabled=false;
+};
+
+// Notif reçue pendant que l'app est ouverte au premier plan -> simple toast
+if(messaging){
+  onMessage(messaging, function(payload){
+    var n = payload.notification || {};
+    if(n.title) toast(n.title + (n.body ? ' — '+n.body : ''));
+  });
+}
 
 var CURRENT_USER = null;
 var SAVE_TIMEOUT = null;

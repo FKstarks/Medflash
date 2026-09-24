@@ -1,0 +1,13 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Suivi MED2</title>
+<link rel="apple-touch-icon" href="icon.png"><link rel="icon" href="icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Suivi MED2">
+<style>html,body{margin:0;height:100%;background:#f3f4fb}iframe{border:0;width:100%;height:100%;display:block}</style></head><body>
+<script>
+const EXEC='https://script.google.com/macros/s/AKfycbwRYZUb_NcQMRCEaKzOqijPvU-5RPLJf2os5LSz75ecwD6BhOkWc1PSYZdFN_GXSik/exec';
+let k=new URLSearchParams(location.search).get('k');
+try{if(k)localStorage.setItem('k',k);else k=localStorage.getItem('k')}catch(e){}
+document.body.innerHTML=k?'<iframe src="'+EXEC+'?k='+encodeURIComponent(k)+'"></iframe>':'<p style="font:16px sans-serif;padding:20px">Lien incomplet : il manque la clé (?k=…).</p>';
+</script></body></html>

@@ -692,6 +692,34 @@ Varus équin</div>
   </div>
 </div>
 
+<div class="overlay" id="mImportQ">
+  <div class="modal">
+    <h2>📝 Importer des questions</h2>
+    <div class="info-box">
+      Colle une ou plusieurs séries de questions générées par Claude. Sépare les séries avec <strong>=== SÉRIE N</strong>, et les questions d'une même série avec <strong>---</strong>. Marque chaque bonne réponse avec <strong>[correct]</strong> (une ou plusieurs par question).
+      <div class="imp-ex">=== SÉRIE 1
+Q: Qu'est-ce qu'une hémoptysie et avec quoi ne faut-il pas la confondre ?
+A. C'est du sang rejeté par la bouche, d'origine respiratoire sous-glottique [correct]
+B. C'est un saignement digestif extériorisé par la bouche (hématémèse)
+C. C'est un saignement d'origine ORL
+D. Il ne faut pas la confondre avec le méléna [correct]
+E. Elle s'accompagne toujours d'une sensation de mort imminente
+---
+Q: (question suivante de la série 1...)
+A. ...
+
+=== SÉRIE 2
+Q: ...</div>
+      Chaque nouvel import <strong>remplace</strong> les séries précédentes de ce cours.
+    </div>
+    <div class="fgrp"><label class="flbl">Texte à importer</label><textarea class="finp fta" id="mImportQTxt" style="min-height:180px" placeholder="Colle ici..."></textarea></div>
+    <div class="m-btns">
+      <button class="btn btn-ghost" onclick="closeModal('mImportQ')">Annuler</button>
+      <button class="btn btn-primary" onclick="doImportQ()">Importer</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="mDay">
   <div class="modal" style="max-width:520px">
     <h2 id="mDayTitle">Révisions du jour</h2>
@@ -2024,7 +2052,9 @@ function evProgSave(){
   if(EV.scope==='deck'){
     if(!CUR.deck)return;
     progSave('eval',{
-      cardIds:EV.qs.map(function(q){return q.card.id;}),
+      cardIds:EV.qs.map(function(q){return q.card?q.card.id:null;}),
+      stems:EV.qs.map(function(q){return q.card?null:q.stem;}),
+      explanations:EV.qs.map(function(q){return q.explanation||null;}),
       opts:EV.qs.map(function(q){return q.opts;}),
       qi:EV.qi,results:EV.results
     });
@@ -2052,20 +2082,24 @@ function evalEntry(){
     );
     return;
   }
-  startEval();
+  evalHome();
 }
 
 function resumeEval(){
   var p=progLoad('eval');
-  if(!p){startEval();return;}
+  if(!p){evalHome();return;}
   var byId={};(CUR.deck.cards||[]).forEach(function(c){byId[c.id]=c;});
   var qs=[];
   for(var i=0;i<p.cardIds.length;i++){
-    var c=byId[p.cardIds[i]];
-    if(!c){qs=null;break;}
-    qs.push({card:c,opts:p.opts[i]});
+    if(p.cardIds[i]){
+      var c=byId[p.cardIds[i]];
+      if(!c){qs=null;break;}
+      qs.push({card:c,opts:p.opts[i]});
+    }else{
+      qs.push({stem:(p.stems&&p.stems[i])||'',opts:p.opts[i],explanation:(p.explanations&&p.explanations[i])||null});
+    }
   }
-  if(!qs){toast('Le cours a changé depuis ton dernier passage — nouveau QCM');startEval();return;}
+  if(!qs){toast('Le cours a changé depuis ton dernier passage — nouveau QCM');evalHome();return;}
   EV.scope='deck';EV.target='evalArea';
   EV.qs=qs;EV.qi=Math.min(p.qi,qs.length-1);EV.results=p.results||[];
   renderEvalQ();
@@ -2073,14 +2107,93 @@ function resumeEval(){
 
 function startEval(){
   if(!CUR.deck)return;
+  EV.scope='deck';EV.target='evalArea';
+  var series=CUR.deck.qSeries;
+  if(series&&series.length){
+    var idx=pickSeriesIdx(series.length,CUR.deck.lastSeriesIdx);
+    CUR.deck.lastSeriesIdx=idx;dbSave();
+    // On mélange l'ordre des questions ET l'ordre des propositions à chaque tentative,
+    // pour éviter d'apprendre "la 2e réponse" par cœur au lieu du fond.
+    EV.qs=shuffle(series[idx].slice()).map(function(q){
+      return{stem:q.q,explanation:q.explanation||null,opts:shuffle(q.opts.map(function(o){return{t:o.t,ok:o.ok};}))};
+    });
+    EV.qi=0;EV.results=[];ST.results={};
+    renderEvalQ();
+    return;
+  }
   var cards=CUR.deck.cards||[];
   if(cards.length<3){
     document.getElementById('evalArea').innerHTML='<div class="empty"><div class="empty-i">📝</div><div class="empty-t">Pas assez de cartes</div><div class="empty-s">Minimum 3 cartes nécessaires</div></div>';
     return;
   }
-  EV.scope='deck';EV.target='evalArea';
   EV.qs=genQCM(cards,10);EV.qi=0;EV.results=[];ST.results={};
   renderEvalQ();
+}
+
+function parseQSeries(raw){
+  var seriesBlocks=raw.split(/\n===+[^\n]*\n|\n===+[^\n]*$|^===+[^\n]*\n/m).map(function(s){return s.trim();}).filter(Boolean);
+  if(!seriesBlocks.length)seriesBlocks=[raw.trim()];
+  return seriesBlocks.map(function(sb){
+    var qBlocks=sb.split(/\n---\n|\n---$|^---\n/m).map(function(b){return b.trim();}).filter(Boolean);
+    return qBlocks.map(function(qb){
+      var lines=qb.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+      var optRe=/^([A-E])[\.\)]\s*(.+)$/i;
+      var stemLines=[],opts=[];
+      lines.forEach(function(l){
+        var m=l.match(optRe);
+        if(m){
+          var text=m[2];
+          var ok=/\[\s*correct\s*\]/i.test(text);
+          text=text.replace(/\s*\[\s*correct\s*\]\s*/ig,'').trim();
+          if(text)opts.push({t:text,ok:ok});
+        } else if(!opts.length){
+          stemLines.push(l.replace(/^Q\s*[:.]\s*/i,''));
+        }
+      });
+      return{q:stemLines.join(' ').trim(),opts:opts};
+    }).filter(function(q){return q.q&&q.opts.length>=2;});
+  }).filter(function(s){return s.length;});
+}
+
+function openImportQ(){
+  if(!CUR.deck)return;
+  document.getElementById('mImportQTxt').value='';
+  openModal('mImportQ');
+}
+
+function doImportQ(){
+  if(!CUR.deck)return;
+  var raw=document.getElementById('mImportQTxt').value.trim();
+  if(!raw){toast('Colle du texte');return;}
+  var series=parseQSeries(raw);
+  if(!series.length){toast('Aucune question reconnue — vérifie le format');return;}
+  CUR.deck.qSeries=series;
+  CUR.deck.lastSeriesIdx=-1;
+  dbSave();
+  closeModal('mImportQ');
+  var totalQ=series.reduce(function(a,s){return a+s.length;},0);
+  toast(series.length+' série(s) importée(s), '+totalQ+' question(s) au total');
+  evalEntry();
+}
+
+function pickSeriesIdx(len,last){
+  if(len<=1)return 0;
+  var idx;do{idx=Math.floor(Math.random()*len);}while(idx===last);
+  return idx;
+}
+
+function evalHome(){
+  var series=CUR.deck.qSeries||[];
+  var n=series.length;
+  document.getElementById('evalArea').innerHTML=
+    '<div class="qcard" style="text-align:center">'+
+    '<div style="font-size:15px;color:var(--tx2);margin-bottom:16px">'+
+    (n?n+' série'+(n>1?'s':'')+' de questions importée'+(n>1?'s':'')+' disponible'+(n>1?'s':'')+' pour ce cours':
+      'Aucune question importée — questions générées automatiquement depuis les flashcards')+
+    '</div>'+
+    '<button class="btn btn-primary" onclick="startEval()" style="margin-right:8px">▶️ Commencer l\'évaluation</button>'+
+    '<button class="btn btn-ghost" onclick="openImportQ()">📝 '+(n?'Remplacer les questions':'Importer des questions')+'</button>'+
+    '</div>';
 }
 
 function genQCM(pool,n){
@@ -2113,6 +2226,7 @@ function renderEvalQ(){
   if(EV.qi>=EV.qs.length){EV.scope==='folder'?renderExamFinal():renderEvalFinal();return;}
   var q=EV.qs[EV.qi],tot=EV.qs.length,done=EV.qi;
   var L=['A','B','C','D','E'];
+  var qHtml=q.stem?esc(q.stem):('Parmi les propositions suivantes concernant <em>'+esc(q.card.question.slice(0,90))+(q.card.question.length>90?'...':'')+'</em>, laquelle (ou lesquelles) est (sont) exacte(s) ?');
   var optsH=q.opts.map(function(opt,i){
     return '<div class="qopt" id="qo'+i+'" onclick="toggleQ('+i+')">'+
       '<div class="qcheck" id="qc'+i+'"></div>'+
@@ -2126,7 +2240,7 @@ function renderEvalQ(){
     progBar(done,tot,'var(--ac),var(--ac2)')+
     '<div class="qcard">'+
     (q.src?'<div class="q-src">📘 '+esc(q.src)+'</div>':'')+
-    '<div class="qtext">Q.'+(done+1)+' : Parmi les propositions suivantes concernant <em>'+esc(q.card.question.slice(0,90))+(q.card.question.length>90?'...':'')+'</em>, laquelle (ou lesquelles) est (sont) exacte(s) ?</div>'+
+    '<div class="qtext">Q.'+(done+1)+' : '+qHtml+'</div>'+
     '<div class="qsub">Une ou plusieurs réponses peuvent être correctes</div>'+
     '<div class="qopts">'+optsH+'</div>'+
     '<div class="qfb" id="qfb"></div>'+
@@ -2161,12 +2275,12 @@ function submitQ(){
     else if(oSet.has(i)){el.className='qopt locked q-miss';el.querySelector('.qcheck').textContent='→';}
   });
   var okL=okIdxs.map(function(i){return L[i];}).join(', ');
+  var refText=q.explanation?esc(q.explanation):(q.card?esc(q.card.answer.replace(/\*\*/g,'').slice(0,150)):'');
   var fb=document.getElementById('qfb');
   fb.className='qfb show '+(correct?'ok':'ko');
-  fb.innerHTML=correct?'<strong>✓ Correct !</strong> Bonne(s) : '+okL:'<strong>✗ Incorrect.</strong> Bonne(s) : <strong>'+okL+'</strong><br><small style="color:var(--tx3)">Réf : '+esc(q.card.answer.replace(/\*\*/g,'').slice(0,150))+'</small>';
+  fb.innerHTML=correct?'<strong>✓ Correct !</strong> Bonne(s) : '+okL:'<strong>✗ Incorrect.</strong> Bonne(s) : <strong>'+okL+'</strong>'+(refText?'<br><small style="color:var(--tx3)">Réf : '+refText+'</small>':'');
   EV.results.push({ok:correct,deckId:q.deckId||null});
-  if(EV.scope==='deck')ST.results[q.card.id]=correct;
-  if(EV.scope==='deck')bumpCard(q.card.id,correct);
+  if(EV.scope==='deck'&&q.card){ST.results[q.card.id]=correct;bumpCard(q.card.id,correct);}
   document.getElementById('qsub').innerHTML='<button class="btn btn-primary" onclick="nextQ()">'+(EV.qi<EV.qs.length-1?'Suivant →':'Voir les résultats')+'</button>';
 }
 function nextQ(){EV.qi++;evProgSave();renderEvalQ();}
@@ -3126,7 +3240,7 @@ setPersistence(auth, browserLocalPersistence).catch(function(e){ console.warn('P
 // ════════════════════════════════════════
 // Clé VAPID à récupérer dans la console Firebase :
 // Project Settings -> Cloud Messaging -> Web Push certificates -> "Generate key pair"
-const VAPID_KEY = "BG2yuuxT9nFRe2gk5UiyF6apu17dq8r3q2m6QCX8tdsG4FdhdYMAqn62RIOuEn0IrPZGLDfKKolYeEvKc5pM6bI";
+const VAPID_KEY = "COLLE_TA_CLE_VAPID_ICI";
 let messaging = null;
 try { messaging = getMessaging(app); } catch(e){ console.warn('FCM indisponible sur cet appareil', e); }
 

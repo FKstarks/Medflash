@@ -2282,6 +2282,7 @@ function submitQ(){
   EV.results.push({ok:correct,deckId:q.deckId||null});
   if(EV.scope==='deck'&&q.card){ST.results[q.card.id]=correct;bumpCard(q.card.id,correct);}
   document.getElementById('qsub').innerHTML='<button class="btn btn-primary" onclick="nextQ()">'+(EV.qi<EV.qs.length-1?'Suivant →':'Voir les résultats')+'</button>';
+  evProgSave();
 }
 function nextQ(){EV.qi++;evProgSave();renderEvalQ();}
 

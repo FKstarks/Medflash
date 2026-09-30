@@ -11,6 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
+<meta name="app-build" content="v6-2026-09-30">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -605,7 +606,7 @@ body{-webkit-overflow-scrolling:touch}
   <div class="modal" style="max-width:460px">
     <h2>🔔 Notifications</h2>
     <div id="notifStatusBox" style="font-size:14px;color:var(--tx2);margin-bottom:16px">Vérification…</div>
-    <div style="font-size:12px;color:var(--tx3);margin-bottom:12px">Version de l'appli : <b>v5 · 30/09</b></div>
+    <div style="font-size:12px;color:var(--tx3);margin-bottom:12px">Version de l'appli : <b id="appBuildLbl">?</b></div>
     <div class="fgrp" id="notifHourBox" style="display:none">
       <label class="flbl">Heure du rappel quotidien</label>
       <select class="finp" id="notifHour">
@@ -3307,7 +3308,7 @@ setPersistence(auth, browserLocalPersistence).catch(function(e){ console.warn('P
 // ════════════════════════════════════════
 // Clé VAPID à récupérer dans la console Firebase :
 // Project Settings -> Cloud Messaging -> Web Push certificates -> "Generate key pair"
-const VAPID_KEY = "BG2yuuxT9nFRe2gk5UiyF6apu17dq8r3q2m6QCX8tdsG4FdhdYMAqn62RIOuEn0IrPZGLDfKKolYeEvKc5pM6bI";
+const VAPID_KEY = "COLLE_TA_CLE_VAPID_ICI";
 let messaging = null;
 try { messaging = getMessaging(app); } catch(e){ console.warn('FCM indisponible sur cet appareil', e); }
 
@@ -3633,6 +3634,44 @@ document.getElementById('authEmail').addEventListener('keydown', function(e){
       });
     });
   }
+
+  /* ---------- 1b. Nouvelle version de l'appli (index.html) ---------- */
+  // Compare le tampon de version de cette page avec celui de la version en ligne.
+  // Ne dépend pas de sw.js : à chaque nouvel index.html sur GitHub, le bandeau apparaît.
+  (function(){
+    var meta = document.querySelector('meta[name="app-build"]');
+    var RUNNING = meta ? meta.getAttribute('content') : null;
+    var lbl = document.getElementById('appBuildLbl');
+    if(lbl) lbl.textContent = RUNNING || 'inconnue';
+    if(!RUNNING) return;
+    var shown = false, busy = false;
+    function check(){
+      if(shown || busy || !navigator.onLine) return;
+      busy = true;
+      fetch('index.html?_v=' + Date.now(), {cache: 'no-store'})
+        .then(function(r){ return r.ok ? r.text() : ''; })
+        .then(function(t){
+          var m = t.match(/<meta name="app-build" content="([^"]+)"/);
+          if(m && m[1] !== RUNNING){
+            shown = true;
+            showBar('<span class="pwa-dot" style="background:var(--ac2)"></span>'+
+                    '<span class="pwa-txt">Nouvelle version disponible</span>'+
+                    '<button class="pwa-action">Mettre à jour</button>'+
+                    '<button class="pwa-close">&times;</button>',
+                    {action: function(){
+                      // URL différente = jamais servie depuis un cache -> version fraîche
+                      window.location.href = window.location.pathname + '?u=' + Date.now();
+                    }});
+          }
+        })
+        .catch(function(){})
+        .then(function(){ busy = false; });
+    }
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'visible') check();
+    });
+    setTimeout(check, 4000);
+  })();
 
   /* ---------- 2. Etat du reseau ---------- */
   window.addEventListener('offline', function(){

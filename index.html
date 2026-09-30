@@ -915,7 +915,33 @@ function folderOf(deck){
 
 function sortPlan(p){p.sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0;});}
 
+// Un cours est "à démarrer" tant que son J0 n'a pas été fait (aucune session validée).
+// Tant qu'il est dans cet état, il ne compte AUCUN retard, n'apparaît pas dans "À réviser
+// maintenant", ni dans le calendrier, ni dans les notifications.
+function deckPending(d){
+  if(!d)return false;
+  if(d.pending===true)return true;
+  if(d.pending===false)return false;
+  // anciens cours (sans le drapeau) : ni session validée, ni échéance faite
+  return !(d.sessions&&d.sessions.length)&&!(d.plan||[]).some(function(e){return e.done;});
+}
+// Au moment du J0 : le planning est recalculé à partir d'AUJOURD'HUI (et non du jour d'ajout des cartes)
+function activateDeck(deck){
+  if(!deckPending(deck))return false;
+  var f=folderOf(deck);
+  var start=today();
+  deck.createdAt=Date.now();
+  deck.pending=false;
+  if(deck.autoPlan&&f&&f.examDate){
+    deck.plan=buildPlan(start,f.examDate);
+  } else {
+    var sched=deck.jSchedule&&deck.jSchedule.length?deck.jSchedule:J_SCHEDULE;
+    deck.plan=sched.map(function(o){return mkEntry(o,addDays(start,o),'normal');});
+  }
+  return true;
+}
 function planPending(deck){
+  if(deckPending(deck))return [];
   return (deck.plan||[]).filter(function(e){return !e.done;});
 }
 function nextEntry(deck){
@@ -924,10 +950,12 @@ function nextEntry(deck){
   return p.length?p[0]:null;
 }
 function lateEntries(deck){
+  if(deckPending(deck))return [];
   var t=today();
   return (deck.plan||[]).filter(function(e){return !e.done&&e.date<t;});
 }
 function dueToday(deck){
+  if(deckPending(deck))return false;
   var t=today();
   return (deck.plan||[]).some(function(e){return !e.done&&e.date===t;});
 }
@@ -1128,7 +1156,7 @@ function allDue(){
   var out=[],t=today();
   D.folders.forEach(function(f){
     (f.decks||[]).forEach(function(d){
-      (d.plan||[]).forEach(function(e){
+      (deckPending(d)?[]:(d.plan||[])).forEach(function(e){
         if(e.done)return;
         out.push({folder:f,deck:d,entry:e,late:diffDays(e.date,t)});
       });
@@ -1141,7 +1169,7 @@ function eventsOn(dateStr){
   var out=[];
   D.folders.forEach(function(f){
     (f.decks||[]).forEach(function(d){
-      (d.plan||[]).forEach(function(e){
+      (deckPending(d)?[]:(d.plan||[])).forEach(function(e){
         if(e.date===dateStr)out.push({folder:f,deck:d,entry:e});
       });
     });
@@ -1161,7 +1189,7 @@ function renderHome(){
     var tc=(f.decks||[]).reduce(function(s,d){return s+(d.cards||[]).length;},0);
     var late=0,due=0;
     (f.decks||[]).forEach(function(d){
-      (d.plan||[]).forEach(function(e){
+      (deckPending(d)?[]:(d.plan||[])).forEach(function(e){
         if(e.done)return;
         if(e.date<t)late++;else if(e.date===t)due++;
       });
@@ -1194,15 +1222,39 @@ function renderHome(){
   g.appendChild(add);
 }
 
+// Cours ajoutés (avec des cartes) dont le J0 n'est pas encore fait
+function pendingHtml(){
+  var rows=[];
+  D.folders.forEach(function(f){
+    (f.decks||[]).forEach(function(d){
+      if(deckPending(d)&&(d.cards||[]).length)rows.push({folder:f,deck:d});
+    });
+  });
+  if(!rows.length)return '';
+  return '<div class="today-panel">'+
+    '<div class="sec-title">🌱 À démarrer <span style="font-weight:400;font-size:13px;color:var(--tx3)">· J0 pas encore fait</span></div>'+
+    rows.map(function(x){
+      var n=(x.deck.cards||[]).length;
+      return '<div class="today-row" onclick="jumpTo(\''+x.folder.id+'\',\''+x.deck.id+'\')">'+
+        '<div class="tr-dot" style="background:'+x.folder.color+'"></div>'+
+        '<div class="tr-main"><div class="tr-t">'+esc(x.deck.name)+'</div>'+
+        '<div class="tr-s">'+x.folder.emoji+' '+esc(x.folder.name)+' · '+n+' carte'+(n>1?'s':'')+' prête'+(n>1?'s':'')+'</div></div>'+
+        '<span class="tag tag-soon">J0 à faire</span></div>';
+    }).join('')+
+    '<div style="font-size:12px;color:var(--tx3);margin-top:10px">Aucun retard n\'est compté tant que le J0 n\'est pas fait. Le planning démarre le jour où tu valides ta première session.</div>'+
+    '</div>';
+}
+
 function renderToday(){
   var t=today();
   var due=allDue().filter(function(x){return x.entry.date<=t;});
   var p=document.getElementById('todayPanel');
   var sub=document.getElementById('homeSub');
+  var pendH=pendingHtml();
   if(!due.length){
     var upcoming=allDue()[0];
     sub.textContent=upcoming?'Rien à réviser aujourd\'hui — prochaine échéance '+prettyD(upcoming.entry.date):'Sélectionne une matière pour accéder aux cours';
-    p.innerHTML='';
+    p.innerHTML=pendH;
     return;
   }
   sub.textContent=due.length+' révision'+(due.length>1?'s':'')+' à faire aujourd\'hui';
@@ -1218,7 +1270,7 @@ function renderToday(){
   p.innerHTML='<div class="today-panel">'+
     '<div class="sec-title">⚡ À réviser maintenant</div>'+rows+
     (due.length>7?'<div style="font-size:12px;color:var(--tx3);margin-top:10px">+ '+(due.length-7)+' autre(s) — voir le calendrier</div>':'')+
-    '</div>';
+    '</div>'+pendH;
 }
 
 function jumpTo(fid,did){
@@ -1288,6 +1340,7 @@ function renderFolder(){
 }
 
 function deckStatus(d){
+  if(deckPending(d))return{cls:'g-ye',pct:8,bcls:'jb-due',btxt:'🌱 J0 à démarrer',label:'Pas encore appris',doneCount:0,totalCount:(d.plan||[]).length};
   var plan=d.plan||[],t=today();
   var done=plan.filter(function(e){return e.done;});
   var total=plan.length;
@@ -1785,13 +1838,15 @@ function reviewFailed(){
 // ════════════════════════════════════════
 // VALIDATION DE SESSION → moteur adaptatif
 // ════════════════════════════════════════
-function saveSession(mode,pctOverride){
+function saveSession(mode,pctOverride,yesOverride,totalOverride){
   if(!CUR.deck)return;
+  var wasPending=activateDeck(CUR.deck); // J0 : le planning démarre aujourd'hui
   var pct=pctOverride!==undefined?pctOverride:scorePct(ST.results);
   var keys=Object.keys(ST.results);
-  var yes=keys.filter(function(k){return ST.results[k];}).length;
+  var yes=yesOverride!==undefined?yesOverride:keys.filter(function(k){return ST.results[k];}).length;
+  var total=totalOverride!==undefined?totalOverride:keys.length;
   if(!CUR.deck.sessions)CUR.deck.sessions=[];
-  CUR.deck.sessions.push({date:Date.now(),score:pct,yes:yes,total:keys.length,mode:mode});
+  CUR.deck.sessions.push({date:Date.now(),score:pct,yes:yes,total:total,mode:mode});
   var r=completeEntry(CUR.deck,pct);
   dbSave();
   if(pct<TH_BAD){
@@ -1802,7 +1857,7 @@ function saveSession(mode,pctOverride){
   } else if(pct<TH_GOOD){
     toast('Session enregistrée · contrôle intermédiaire ajouté 🟡');
   } else {
-    toast(r.lateBy>0?'Session enregistrée (rattrapage de '+r.lateBy+'j) ✓':'Session validée ✓');
+    toast(wasPending?'J0 validé ✓ · planning lancé à partir d\'aujourd\'hui 📅':(r.lateBy>0?'Session enregistrée (rattrapage de '+r.lateBy+'j) ✓':'Session validée ✓'));
   }
   renderFolder();
   switchTab('stats');
@@ -2302,7 +2357,7 @@ function renderEvalFinal(){
     '</div>'+verdictBox(pct,CUR.deck)+
     '<div class="r-btns">'+
     '<button class="btn btn-ghost" onclick="startEval()">🔁 Nouveau QCM</button>'+
-    '<button class="btn btn-primary" onclick="saveSession(\'eval\')">✓ Valider</button>'+
+    '<button class="btn btn-primary" onclick="saveSession(\'eval\','+pct+','+yes+','+tot+')">✓ Valider</button>'+
     '</div></div>';
 }
 
@@ -2542,6 +2597,15 @@ function renderStats(){
     alert='<div class="verdict v-mid" style="margin-bottom:16px"><b>⚡ C\'est le jour</b>Révision J'+nxt.off+' prévue aujourd\'hui.</div>';
   }
 
+  if(deckPending(d)){
+    alert='<div class="verdict v-mid" style="margin-bottom:16px"><b>🌱 J0 pas encore fait</b>'+
+      'Le planning démarrera le jour où tu valideras ta première session (Révision, Apprentissage ou Évaluation). Aucun retard n\'est compté d\'ici là.</div>';
+    planRows=plan.map(function(e){
+      return '<div class="plan-row"><div class="plan-j">J'+e.off+'</div>'+
+        '<div class="plan-d">'+(e.off===0?'Le jour où tu te lances':'J0 + '+e.off+' jour'+(e.off>1?'s':''))+'</div>'+
+        '<span class="tag tag-soon">en attente</span></div>';
+    }).join('');
+  }
   var hard=(d.cards||[]).filter(isHard);
   var hardH=hard.length?'<div style="background:var(--s1);border:1px solid var(--bd);border-radius:18px;padding:22px;margin-bottom:16px">'+
     '<div class="sec-title">🔥 Cartes difficiles ('+hard.length+')</div>'+
@@ -2740,6 +2804,7 @@ function quickToggle(deckId,entryId){
   var sc=v.trim()===''?75:Math.max(0,Math.min(100,parseInt(v,10)||0));
   var saveCur=CUR.deck;
   CUR.deck=r.deck;
+  if(activateDeck(r.deck))entryId=null;
   if(!r.deck.sessions)r.deck.sessions=[];
   r.deck.sessions.push({date:Date.now(),score:sc,yes:0,total:0,mode:'manuel'});
   completeEntry(r.deck,sc,entryId);
@@ -2949,7 +3014,7 @@ function saveDeck(){
     dbSave();closeModal('mDeck');renderFolder();toast('Cours mis à jour ✓');EDIT_DECK_ID=null;return;
   }
   var start=today();
-  var deck={id:uid(),name:name,cards:[],sessions:[],createdAt:Date.now(),relearn:false};
+  var deck={id:uid(),name:name,cards:[],sessions:[],createdAt:Date.now(),relearn:false,pending:true};
   if(PLAN_MODE==='auto'&&CUR.folder.examDate){
     deck.plan=buildPlan(start,CUR.folder.examDate);
     deck.jSchedule=deck.plan.map(function(e){return e.off;});
@@ -2961,7 +3026,7 @@ function saveDeck(){
   }
   CUR.folder.decks.push(deck);
   dbSave();closeModal('mDeck');renderFolder();
-  toast('Cours créé · '+deck.plan.length+' révisions planifiées 📅');
+  toast('Cours créé · le planning démarrera quand tu feras le J0 🌱');
 }
 
 function saveCard(){
@@ -3241,7 +3306,7 @@ setPersistence(auth, browserLocalPersistence).catch(function(e){ console.warn('P
 // ════════════════════════════════════════
 // Clé VAPID à récupérer dans la console Firebase :
 // Project Settings -> Cloud Messaging -> Web Push certificates -> "Generate key pair"
-const VAPID_KEY = "BG2yuuxT9nFRe2gk5UiyF6apu17dq8r3q2m6QCX8tdsG4FdhdYMAqn62RIOuEn0IrPZGLDfKKolYeEvKc5pM6bI";
+const VAPID_KEY = "COLLE_TA_CLE_VAPID_ICI";
 let messaging = null;
 try { messaging = getMessaging(app); } catch(e){ console.warn('FCM indisponible sur cet appareil', e); }
 
@@ -3443,6 +3508,9 @@ async function saveToCloud(uid){
     // des séries de questions importées (qSeries) et des options d'une évaluation en pause.
     // On les encode avant l'envoi (fsEnc) et on les décode au chargement (fsDec).
     var clean = JSON.parse(JSON.stringify({folders:D.folders,progress:D.progress||{},examProgress:D.examProgress||{}}));
+    // Cours dont le J0 n'est pas fait : on n'envoie pas leur planning au cloud,
+    // pour qu'ils ne déclenchent aucun rappel/notification côté serveur.
+    clean.folders.forEach(function(f){ (f.decks||[]).forEach(function(d){ if(deckPending(d)) d.plan=[]; }); });
     await setDoc(ref,{folders:fsEnc(clean.folders),progress:fsEnc(clean.progress),examProgress:fsEnc(clean.examProgress),updatedAt:Date.now()});
   } catch(e){
     console.error('Erreur sauvegarde:',e);
@@ -3455,9 +3523,16 @@ window.dbSave = function(){
   _origDbSave();
   if(CURRENT_USER){
     clearTimeout(SAVE_TIMEOUT);
-    SAVE_TIMEOUT=setTimeout(function(){ saveToCloud(CURRENT_USER.uid); },1500);
+    SAVE_TIMEOUT=setTimeout(function(){ SAVE_TIMEOUT=null; saveToCloud(CURRENT_USER.uid); },1500);
   }
 };
+// Si tu quittes l'appli avant les 1,5 s, on envoie tout de suite au cloud
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState==='hidden' && CURRENT_USER && SAVE_TIMEOUT){
+    clearTimeout(SAVE_TIMEOUT); SAVE_TIMEOUT=null;
+    saveToCloud(CURRENT_USER.uid);
+  }
+});
 
 onAuthStateChanged(auth, async function(user){
   if(user){

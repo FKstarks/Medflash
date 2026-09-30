@@ -7,7 +7,7 @@
    - API Firebase (auth / Firestore) -> JAMAIS mis en cache, Firestore gère sa propre persistance
    Incrémente VERSION à chaque déploiement pour forcer le rafraîchissement du cache.
 */
-const VERSION = 'medflash-v2';
+const VERSION = 'medflash-v3';
 const CORE_CACHE = VERSION + '-core';
 const RUNTIME_CACHE = VERSION + '-runtime';
 
@@ -88,6 +88,12 @@ self.addEventListener('fetch', function (e) {
 
   for (var i = 0; i < NEVER_CACHE.length; i++) {
     if (url.hostname.indexOf(NEVER_CACHE[i]) !== -1 || req.url.indexOf(NEVER_CACHE[i]) !== -1) return;
+  }
+
+  // 0. Contrôle de version (index.html?_v=...) : toujours le réseau, jamais de cache
+  if (url.origin === self.location.origin && url.searchParams.has('_v')) {
+    e.respondWith(fetch(req.url, { cache: 'no-store' }));
+    return;
   }
 
   // 1. Navigation : réseau d'abord

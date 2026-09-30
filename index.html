@@ -3241,7 +3241,7 @@ setPersistence(auth, browserLocalPersistence).catch(function(e){ console.warn('P
 // ════════════════════════════════════════
 // Clé VAPID à récupérer dans la console Firebase :
 // Project Settings -> Cloud Messaging -> Web Push certificates -> "Generate key pair"
-const VAPID_KEY = "BG2yuuxT9nFRe2gk5UiyF6apu17dq8r3q2m6QCX8tdsG4FdhdYMAqn62RIOuEn0IrPZGLDfKKolYeEvKc5pM6bI";
+const VAPID_KEY = "COLLE_TA_CLE_VAPID_ICI";
 let messaging = null;
 try { messaging = getMessaging(app); } catch(e){ console.warn('FCM indisponible sur cet appareil', e); }
 
@@ -3399,6 +3399,22 @@ window.signOut = async function(){
   await fbSignOut(auth);
 };
 
+// Encodage des tableaux imbriqués pour Firestore : [[a,b],[c]] -> [{_a:[a,b]},{_a:[c]}]
+function fsEnc(v){
+  if(Array.isArray(v)) return v.map(function(x){ return Array.isArray(x) ? {_a:fsEnc(x)} : fsEnc(x); });
+  if(v && typeof v==='object'){ var o={}; Object.keys(v).forEach(function(k){ o[k]=fsEnc(v[k]); }); return o; }
+  return v;
+}
+function fsDec(v){
+  if(Array.isArray(v)) return v.map(fsDec);
+  if(v && typeof v==='object'){
+    var ks=Object.keys(v);
+    if(ks.length===1 && ks[0]==='_a' && Array.isArray(v._a)) return fsDec(v._a);
+    var o={}; ks.forEach(function(k){ o[k]=fsDec(v[k]); }); return o;
+  }
+  return v;
+}
+
 async function loadFromCloud(uid){
   try{
     var ref = doc(db,'users',uid,'data','main');
@@ -3406,9 +3422,9 @@ async function loadFromCloud(uid){
     if(snap.exists()){
       var data=snap.data();
       if(data&&data.folders){
-        D.folders=data.folders;
-        D.progress=data.progress||{};
-        D.examProgress=data.examProgress||{};
+        D.folders=fsDec(data.folders);
+        D.progress=fsDec(data.progress||{});
+        D.examProgress=fsDec(data.examProgress||{});
         // On ecrit tout de suite dans localStorage : sinon init() -> dbLoad()
         // ecraserait les donnees du cloud avec la copie locale (perimee sur un
         // autre appareil). C'est ce qui cassait la sync entre Mac / iPad / iPhone.
@@ -3423,8 +3439,15 @@ async function loadFromCloud(uid){
 async function saveToCloud(uid){
   try{
     var ref = doc(db,'users',uid,'data','main');
-    await setDoc(ref,{folders:D.folders,progress:D.progress||{},examProgress:D.examProgress||{},updatedAt:Date.now()});
-  } catch(e){ console.error('Erreur sauvegarde:',e); }
+    // Firestore refuse les tableaux imbriqués (tableau dans un tableau) : c'est le cas
+    // des séries de questions importées (qSeries) et des options d'une évaluation en pause.
+    // On les encode avant l'envoi (fsEnc) et on les décode au chargement (fsDec).
+    var clean = JSON.parse(JSON.stringify({folders:D.folders,progress:D.progress||{},examProgress:D.examProgress||{}}));
+    await setDoc(ref,{folders:fsEnc(clean.folders),progress:fsEnc(clean.progress),examProgress:fsEnc(clean.examProgress),updatedAt:Date.now()});
+  } catch(e){
+    console.error('Erreur sauvegarde:',e);
+    try{ toast('⚠️ Sauvegarde cloud impossible — tes données restent sur cet appareil'); }catch(_){}
+  }
 }
 
 var _origDbSave = window.dbSave;

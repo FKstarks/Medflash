@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v6-2026-09-30">
+<meta name="app-build" content="v7-2026-09-30">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -465,6 +465,7 @@ body{-webkit-overflow-scrolling:touch}
       <button class="tog" id="togFailed" onclick="setFilter('failed')">⚡ Ratées seulement</button>
       <button class="tog" id="togHard" onclick="setFilter('hard')">🔥 Difficiles</button>
       <button class="tog" id="togWrite" onclick="setWriteMode(!ST.writeMode)">✍️ Mode écriture</button>
+      <button class="tog" id="togReverse" onclick="setReverse(!ST.reverse)">🔄 Inversé</button>
       <button class="tog" id="togStrictStudy" onclick="toggleStudyStrict()" style="display:none">🎯 Correction stricte</button>
     </div>
     <div id="studyArea">
@@ -1540,7 +1541,7 @@ function isHard(c){
 // ════════════════════════════════════════
 // STUDY — révision classique
 // ════════════════════════════════════════
-var ST={cards:[],idx:0,flipped:false,results:{},writes:{},filter:'order',writeMode:false,strict:false};
+var ST={cards:[],idx:0,flipped:false,results:{},writes:{},filter:'order',writeMode:false,strict:false,reverse:false};
 
 function studyEntry(){
   if(!CUR.deck)return;
@@ -1573,6 +1574,8 @@ function resumeStudy(){
   ST.filter=p.filter||'order';
   ST.writeMode=!!p.writeMode;
   ST.strict=!!p.strict;
+  ST.reverse=!!p.reverse;
+  document.getElementById('togReverse').classList.toggle('on',ST.reverse);
   ['order','shuffle','failed','hard'].forEach(function(k){
     document.getElementById('tog'+k.charAt(0).toUpperCase()+k.slice(1)).classList.toggle('on',k===ST.filter);
   });
@@ -1591,7 +1594,7 @@ function progSaveStudy(){
   progSave('study',{
     order:ST.cards.map(function(c){return c.id;}),
     idx:ST.idx,results:ST.results,writes:ST.writes,
-    filter:ST.filter,writeMode:ST.writeMode,strict:ST.strict
+    filter:ST.filter,writeMode:ST.writeMode,strict:ST.strict,reverse:ST.reverse
   });
 }
 
@@ -1634,6 +1637,14 @@ function setWriteMode(on){
   document.getElementById('studyArea').innerHTML='';
   renderStudyCard();
 }
+// Sens inversé : on voit la RÉPONSE de la carte et on doit retrouver la QUESTION.
+// Cumulable avec Mélanger / Ratées / Difficiles / Mode écriture.
+function setReverse(on){
+  ST.reverse=on;
+  document.getElementById('togReverse').classList.toggle('on',on);
+  toast(on?'Sens inversé 🔄 — réponse → question':'Sens normal');
+  startStudy();
+}
 function toggleStudyStrict(){
   ST.strict=!ST.strict;
   document.getElementById('togStrictStudy').classList.toggle('on',ST.strict);
@@ -1648,6 +1659,10 @@ function renderStudyCard(){
   }
   progSaveStudy();
   var card=ST.cards[ST.idx];
+  // sens normal : question -> réponse ; sens inversé : réponse -> question
+  var qTxt=ST.reverse?card.answer:card.question;
+  var aTxt=ST.reverse?card.question:card.answer;
+  var imgH=card.image?'<img src="'+card.image+'" class="card-img" alt="image">':'';
   var cur=ST.idx+1,tot=ST.cards.length;
   document.getElementById('studyCnt').textContent=cur+' / '+tot;
   document.getElementById('studyPbar').style.width=(cur/tot*100)+'%';
@@ -1658,13 +1673,13 @@ function renderStudyCard(){
     if(ws.done){
       if(ws.ok) fbH='<div class="fb-ok" style="margin-bottom:12px">✓ Bonne réponse !</div>';
       else fbH='<div class="fb-ko" style="margin-bottom:8px">✗ '+(ST.strict?'Incomplet':'Pas tout à fait')+'</div>'+missingHtml(ws.res);
-      fbH+='<div class="ref-ans" style="margin:12px 0"><strong>Réponse complète :</strong><br>'+fmt(card.answer)+'</div>';
+      fbH+='<div class="ref-ans" style="margin:12px 0"><strong>Réponse complète :</strong><br>'+(ST.reverse?imgH:'')+fmt(aTxt)+'</div>';
     }
     area.innerHTML=
       '<div class="card-area">'+
       '<div style="width:100%;max-width:720px;background:var(--s1);border:1px solid var(--bd);border-radius:22px;padding:28px;margin-bottom:16px;box-shadow:var(--sh2)">'+
-        '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--tx3);margin-bottom:12px">QUESTION</div>'+
-        '<div class="card-cnt">'+(card.image?'<img src="'+card.image+'" class="card-img" alt="image">':'')+fmt(card.question)+'</div>'+
+        '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--tx3);margin-bottom:12px">'+(ST.reverse?'RÉPONSE · retrouve la question':'QUESTION')+'</div>'+
+        '<div class="card-cnt">'+(ST.reverse?'':imgH)+fmt(qTxt)+'</div>'+
         '<div style="height:1px;background:var(--bd);margin:18px 0"></div>'+
         '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--ye);margin-bottom:10px">✍️ TA RÉPONSE'+(ST.strict?' · MODE STRICT':'')+'</div>'+
         '<textarea class="study-write-inp" id="studyWI" placeholder="Écris les idées clés de mémoire..." '+(ws.done?'disabled':'')+'>'+esc(ws.ans||'')+'</textarea>'+
@@ -1720,8 +1735,13 @@ function renderStudyCard(){
   if(ch)ch.style.display='block';
   var cq=document.getElementById('cardQ');
   var ca=document.getElementById('cardA');
-  if(cq)cq.innerHTML=(card.image?'<img src="'+card.image+'" class="card-img" alt="image">':'')+fmt(card.question);
-  if(ca)ca.innerHTML=fmt(card.answer);
+  if(cq)cq.innerHTML=(ST.reverse?'':imgH)+fmt(qTxt);
+  if(ca)ca.innerHTML=(ST.reverse?imgH:'')+fmt(aTxt);
+  var lf=document.querySelector('#theCard .card-front .card-lbl');
+  var lb=document.querySelector('#theCard .card-back .card-lbl');
+  if(lf)lf.textContent=ST.reverse?'RÉPONSE':'QUESTION';
+  if(lb)lb.textContent=ST.reverse?'QUESTION':'RÉPONSE';
+  if(ch)ch.textContent=ST.reverse?'Clique sur la carte pour voir la question':'Clique sur la carte pour voir la réponse';
   var bp=document.getElementById('btnPrev');
   var bn=document.getElementById('btnNext');
   if(bp)bp.disabled=ST.idx===0;
@@ -1763,7 +1783,7 @@ function submitStudyWrite(id){
   if(!ST.writes)ST.writes={};
   var card=ST.cards.find(function(c){return c.id===id;});
   if(!card)return;
-  var res=checkAnswer(ans,card.answer,ST.strict);
+  var res=checkAnswer(ans,ST.reverse?card.question:card.answer,ST.strict);
   ST.writes[id]={done:true,ok:res.ok,ans:ans,res:res};
   ST.results[id]=res.ok;
   bumpCard(id,res.ok);
@@ -3308,7 +3328,7 @@ setPersistence(auth, browserLocalPersistence).catch(function(e){ console.warn('P
 // ════════════════════════════════════════
 // Clé VAPID à récupérer dans la console Firebase :
 // Project Settings -> Cloud Messaging -> Web Push certificates -> "Generate key pair"
-const VAPID_KEY = "BG2yuuxT9nFRe2gk5UiyF6apu17dq8r3q2m6QCX8tdsG4FdhdYMAqn62RIOuEn0IrPZGLDfKKolYeEvKc5pM6bI";
+const VAPID_KEY = "COLLE_TA_CLE_VAPID_ICI";
 let messaging = null;
 try { messaging = getMessaging(app); } catch(e){ console.warn('FCM indisponible sur cet appareil', e); }
 

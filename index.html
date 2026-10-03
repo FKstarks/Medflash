@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v9-2026-10-03">
+<meta name="app-build" content="v10-2026-10-03">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -507,7 +507,8 @@ body{-webkit-overflow-scrolling:touch}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
       <div style="font-size:14px;color:var(--tx2)" id="cardListMeta"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-ghost btn-sm" onclick="openImport()">📋 Importer</button>
+        <button class="btn btn-ghost btn-sm" onclick="openImport('append')">📋 Importer</button>
+        <button class="btn btn-ghost btn-sm" onclick="openImport('replace')">♻️ Remplacer</button>
         <button class="btn btn-primary btn-sm" onclick="openCardModal()">+ Ajouter</button>
       </div>
     </div>
@@ -674,7 +675,7 @@ body{-webkit-overflow-scrolling:touch}
 
 <div class="overlay" id="mImport">
   <div class="modal">
-    <h2>📋 Importer depuis Claude</h2>
+    <h2 id="mImportTitle">📋 Importer depuis Claude</h2>
     <div class="info-box">
       Colle les flashcards générées par Claude. Chaque carte séparée par <strong>---</strong>. Une ligne <strong>=== STRICT</strong> marque le début des cartes à correction stricte. La première ligne (avec ou sans **) = question, le reste = réponse.
       <div class="imp-ex">**Quels sont les 3 faisceaux du LLE ?**
@@ -692,7 +693,7 @@ Varus équin</div>
     <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:12px;cursor:pointer"><input type="checkbox" id="mImportStrict"> 🎯 Ce sont des faits exacts (bloc STRICT) : correction stricte automatique</label>
     <div class="m-btns">
       <button class="btn btn-ghost" onclick="closeModal('mImport')">Annuler</button>
-      <button class="btn btn-primary" onclick="doImport()">Importer</button>
+      <button class="btn btn-primary" id="mImportAction" onclick="doImport()">Importer</button>
     </div>
   </div>
 </div>
@@ -2285,6 +2286,8 @@ function doImportQ(){
   if(!series.length){toast('Aucune question reconnue — vérifie le format');return;}
   var totalQ=series.reduce(function(a,s){return a+s.length;},0);
   var rapport=(QIMP.rej?' · '+QIMP.rej+' rejetée(s)':'')+(QIMP.noOk?' · ⚠️ '+QIMP.noOk+' sans [correct]':'');
+  var oldSeries=(CUR.deck.qSeries||[]).length;
+  if(oldSeries&&!confirm('Remplacer les '+oldSeries+' série(s) de questions actuelles par '+series.length+' nouvelle(s) ?\n\nLe cours, le planning et les J déjà effectués seront conservés.'))return;
   CUR.deck.qSeries=series;
   CUR.deck.lastSeriesIdx=-1;
   dbSave();
@@ -3156,7 +3159,15 @@ function editCard(id){
   if(c.image){showImgPreview(c.image);PENDING_IMG=c.image;}
   openModal('mCard');
 }
-function openImport(){document.getElementById('mImportTxt').value='';document.getElementById('mImportStrict').checked=false;openModal('mImport');}
+var CARD_IMPORT_MODE='append';
+function openImport(mode){
+  CARD_IMPORT_MODE=mode==='replace'?'replace':'append';
+  document.getElementById('mImportTxt').value='';
+  document.getElementById('mImportStrict').checked=false;
+  document.getElementById('mImportTitle').textContent=CARD_IMPORT_MODE==='replace'?'♻️ Remplacer les flashcards':'📋 Importer depuis Claude';
+  document.getElementById('mImportAction').textContent=CARD_IMPORT_MODE==='replace'?'Remplacer':'Importer';
+  openModal('mImport');
+}
 
 // ════════════════════════════════════════
 // SAVE / DELETE
@@ -3244,7 +3255,12 @@ function doImport(){
   if(mk>=0)parts=[[raw.slice(0,mk),forceStrict],[raw.slice(mk).replace(/^\s*=+[ \t]*STRICT\b.*\n?/i,''),true]];
   var n=0,nS=0,dup=0,rej=0;
   if(!CUR.deck.cards)CUR.deck.cards=[];
-  var seen={};CUR.deck.cards.forEach(function(c){seen[c.question.trim().toLowerCase()]=1;});
+  var replacing=CARD_IMPORT_MODE==='replace';
+  var oldCardCount=CUR.deck.cards.length;
+  var newCards=[];
+  var targetCards=replacing?newCards:CUR.deck.cards;
+  var seen={};
+  if(!replacing)CUR.deck.cards.forEach(function(c){seen[c.question.trim().toLowerCase()]=1;});
   parts.forEach(function(pt){
     var blocks=pt[0].split(/\n---\s*\n|\n---\s*$|^---\s*\n/m).map(function(b){return b.trim();}).filter(Boolean);
     blocks.forEach(function(blk){
@@ -3258,11 +3274,18 @@ function doImport(){
       seen[k]=1;
       var c={id:uid(),question:q,answer:a,stats:{ok:0,ko:0}};
       if(pt[1]){c.type='strict';nS++;}
-      CUR.deck.cards.push(c);n++;
+      targetCards.push(c);n++;
     });
   });
+  if(replacing){
+    if(!n){toast('Aucune carte valide reconnue — remplacement annulé');return;}
+    if(!confirm('Remplacer les '+oldCardCount+' flashcard(s) actuelles par '+n+' nouvelle(s) ?\n\nLa matière, le cours, le planning et les J déjà effectués seront conservés.'))return;
+    CUR.deck.cards=newCards;
+  }
   dbSave();closeModal('mImport');renderCards();
-  toast(n+' carte(s) importée(s)'+(nS?' dont '+nS+' strictes 🎯':'')+(dup?' · '+dup+' doublon(s) ignoré(s)':'')+(rej?' · '+rej+' rejetée(s)':''));
+  toast(replacing
+    ? n+' nouvelle(s) flashcard(s) — anciennes cartes remplacées ✓'
+    : n+' carte(s) importée(s)'+(nS?' dont '+nS+' strictes 🎯':'')+(dup?' · '+dup+' doublon(s) ignoré(s)':'')+(rej?' · '+rej+' rejetée(s)':''));
 }
 
 function delFolder(id){if(!confirm('Supprimer cette matière et tous ses cours ?'))return;D.folders=D.folders.filter(function(f){return f.id!==id;});dbSave();renderHome();toast('Supprimé');}
@@ -3509,7 +3532,7 @@ setPersistence(auth, browserLocalPersistence).catch(function(e){ console.warn('P
 // ════════════════════════════════════════
 // Clé VAPID à récupérer dans la console Firebase :
 // Project Settings -> Cloud Messaging -> Web Push certificates -> "Generate key pair"
-const VAPID_KEY = "BG2yuuxT9nFRe2gk5UiyF6apu17dq8r3q2m6QCX8tdsG4FdhdYMAqn62RIOuEn0IrPZGLDfKKolYeEvKc5pM6bI";
+const VAPID_KEY = "COLLE_TA_CLE_VAPID_ICI";
 let messaging = null;
 try { messaging = getMessaging(app); } catch(e){ console.warn('FCM indisponible sur cet appareil', e); }
 

@@ -664,6 +664,7 @@ body{-webkit-overflow-scrolling:touch}
     <div style="font-size:12px;color:var(--tx3);margin-top:-8px;margin-bottom:8px">
       Astuce : une réponse en <strong>puces</strong> permet au mode strict de vérifier chaque élément un par un.
     </div>
+    <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:12px;cursor:pointer"><input type="checkbox" id="mCardStrict"> 🎯 Fait exact (définition, chiffre, classification) : toujours corrigé en strict</label>
     <div class="m-btns">
       <button class="btn btn-ghost" onclick="closeModal('mCard')">Annuler</button>
       <button class="btn btn-primary" onclick="saveCard()">Sauvegarder</button>
@@ -675,7 +676,7 @@ body{-webkit-overflow-scrolling:touch}
   <div class="modal">
     <h2>📋 Importer depuis Claude</h2>
     <div class="info-box">
-      Colle les flashcards générées par Claude. Chaque carte séparée par <strong>---</strong>. La première ligne (avec ou sans **) = question, le reste = réponse.
+      Colle les flashcards générées par Claude. Chaque carte séparée par <strong>---</strong>. Une ligne <strong>=== STRICT</strong> marque le début des cartes à correction stricte. La première ligne (avec ou sans **) = question, le reste = réponse.
       <div class="imp-ex">**Quels sont les 3 faisceaux du LLE ?**
 
 - LTFA : 1er rompu
@@ -688,6 +689,7 @@ body{-webkit-overflow-scrolling:touch}
 Varus équin</div>
     </div>
     <div class="fgrp"><label class="flbl">Texte à importer</label><textarea class="finp fta" id="mImportTxt" style="min-height:180px" placeholder="Colle ici..."></textarea></div>
+    <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:12px;cursor:pointer"><input type="checkbox" id="mImportStrict"> 🎯 Ce sont des faits exacts (bloc STRICT) : correction stricte automatique</label>
     <div class="m-btns">
       <button class="btn btn-ghost" onclick="closeModal('mImport')">Annuler</button>
       <button class="btn btn-primary" onclick="doImport()">Importer</button>
@@ -716,6 +718,7 @@ Q: ...</div>
       Chaque nouvel import <strong>remplace</strong> les séries précédentes de ce cours.
     </div>
     <div class="fgrp"><label class="flbl">Texte à importer</label><textarea class="finp fta" id="mImportQTxt" style="min-height:180px" placeholder="Colle ici..."></textarea></div>
+    <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:12px;cursor:pointer"><input type="checkbox" id="mImportQPre"> 🧪 C'est un pré-test (rangé à part, ne remplace pas les séries)</label>
     <div class="m-btns">
       <button class="btn btn-ghost" onclick="closeModal('mImportQ')">Annuler</button>
       <button class="btn btn-primary" onclick="doImportQ()">Importer</button>
@@ -1470,6 +1473,7 @@ function refElements(ref){
 
 // Un élément est-il présent dans la réponse de l'utilisateur ?
 function elementMatched(el,userKws){
+  var lm=el.match(/^\s*\*\*[^*]+\*\*\s*:\s*(.+)$/);if(lm)el=lm[1];
   var bolds=[];
   var re=/\*\*(.+?)\*\*/g,mm;
   while((mm=re.exec(el))!==null)bolds.push(mm[1]);
@@ -1531,7 +1535,24 @@ function bumpCard(cardId,ok){
   var c=(CUR.deck.cards||[]).find(function(x){return x.id===cardId;});
   if(!c)return;
   if(!c.stats)c.stats={ok:0,ko:0};
-  if(ok)c.stats.ok++;else c.stats.ko++;
+  if(ok){c.stats.ok++;c.stats.streak=0;}else{c.stats.ko++;c.stats.streak=(c.stats.streak||0)+1;}
+}
+var STREAK_BAD=3;
+function fixFail(cardId){
+  if(!CUR.deck)return;
+  var c=(CUR.deck.cards||[]).find(function(x){return x.id===cardId;});
+  if(!c||!c.stats)return;
+  if(c.stats.ko>0)c.stats.ko--;
+  c.stats.ok++;c.stats.streak=0;
+}
+function isLoop(c){return ((c.stats&&c.stats.streak)||0)>=STREAK_BAD;}
+function cardStrict(card,g){return (card&&card.type==='strict')?true:!!g;}
+function loopBoxHtml(deck){
+  var L=((deck&&deck.cards)||[]).filter(isLoop);
+  if(!L.length)return '';
+  return '<div class="verdict v-bad"><b>🔁 '+L.length+' carte'+(L.length>1?'s':'')+' bloquée'+(L.length>1?'s':'')+' ('+STREAK_BAD+' échecs d\'affilée)</b>'+
+    'Retourne à la fiche sur ce point, puis réessaie. Si elle reste confuse, réécris la carte.'+
+    L.slice(0,8).map(function(c){return '<div style="margin-top:8px;display:flex;gap:8px;align-items:center;justify-content:space-between"><span style="font-size:13px">'+esc(c.question.slice(0,90))+'</span><button class="btn btn-ghost" onclick="editCard(\''+c.id+'\')">✏️ Réécrire</button></div>';}).join('')+'</div>';
 }
 function isHard(c){
   var s=c.stats||{ok:0,ko:0};
@@ -1672,7 +1693,7 @@ function renderStudyCard(){
     var fbH='';
     if(ws.done){
       if(ws.ok) fbH='<div class="fb-ok" style="margin-bottom:12px">✓ Bonne réponse !</div>';
-      else fbH='<div class="fb-ko" style="margin-bottom:8px">✗ '+(ST.strict?'Incomplet':'Pas tout à fait')+'</div>'+missingHtml(ws.res);
+      else fbH='<div class="fb-ko" style="margin-bottom:8px">✗ '+(cardStrict(card,ST.strict)?'Incomplet':'Pas tout à fait')+'</div>'+missingHtml(ws.res);
       fbH+='<div class="ref-ans" style="margin:12px 0"><strong>Réponse complète :</strong><br>'+(ST.reverse?imgH:'')+fmt(aTxt)+'</div>';
     }
     area.innerHTML=
@@ -1681,9 +1702,9 @@ function renderStudyCard(){
         '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--tx3);margin-bottom:12px">'+(ST.reverse?'RÉPONSE · retrouve la question':'QUESTION')+'</div>'+
         '<div class="card-cnt">'+(ST.reverse?'':imgH)+fmt(qTxt)+'</div>'+
         '<div style="height:1px;background:var(--bd);margin:18px 0"></div>'+
-        '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--ye);margin-bottom:10px">✍️ TA RÉPONSE'+(ST.strict?' · MODE STRICT':'')+'</div>'+
+        '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--ye);margin-bottom:10px">✍️ TA RÉPONSE'+(cardStrict(card,ST.strict)?' · MODE STRICT':'')+'</div>'+
         '<textarea class="study-write-inp" id="studyWI" placeholder="Écris les idées clés de mémoire..." '+(ws.done?'disabled':'')+'>'+esc(ws.ans||'')+'</textarea>'+
-        '<div class="pencil-hint">🖊️ '+(ST.strict?'Tous les éléments doivent y être — ordre et formulation libres':'Idées principales et termes clés suffisent')+' · Ctrl+Entrée pour valider</div>'+
+        '<div class="pencil-hint">🖊️ '+(cardStrict(card,ST.strict)?'Tous les éléments doivent y être — ordre et formulation libres':'Idées principales et termes clés suffisent')+' · Ctrl+Entrée pour valider</div>'+
         fbH+
         '<div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">'+
         (!ws.done?
@@ -1783,7 +1804,7 @@ function submitStudyWrite(id){
   if(!ST.writes)ST.writes={};
   var card=ST.cards.find(function(c){return c.id===id;});
   if(!card)return;
-  var res=checkAnswer(ans,ST.reverse?card.question:card.answer,ST.strict);
+  var res=checkAnswer(ans,ST.reverse?card.question:card.answer,cardStrict(card,ST.strict));
   ST.writes[id]={done:true,ok:res.ok,ans:ans,res:res};
   ST.results[id]=res.ok;
   bumpCard(id,res.ok);
@@ -1796,7 +1817,7 @@ function skipStudyWrite(id){
   renderStudyCard();
 }
 function overrideStudyOk(id){
-  if(ST.writes&&ST.writes[id]){ST.writes[id].ok=true;ST.results[id]=true;}
+  if(ST.writes&&ST.writes[id]){if(!ST.writes[id].ok)fixFail(id);ST.writes[id].ok=true;ST.results[id]=true;}
   renderStudyCard();
 }
 
@@ -1842,7 +1863,7 @@ function showStudyResult(){
       '<div class="stat-box"><div class="stat-n rd">'+no+'</div><div class="stat-l">Pas su</div></div>'+
       '<div class="stat-box"><div class="stat-n">'+pct+'%</div><div class="stat-l">Score</div></div>'+
     '</div>'+
-    verdictBox(pct,CUR.deck)+
+    verdictBox(pct,CUR.deck)+loopBoxHtml(CUR.deck)+
     '<div class="r-btns">'+
       '<button class="btn btn-ghost" onclick="restartStudy()">🔁 Recommencer</button>'+
       '<button class="btn btn-ghost" onclick="reviewFailed()">⚡ Revoir ratées</button>'+
@@ -2046,7 +2067,7 @@ function renderLrnWrite(){
   var fbH='';
   if(ws.done){
     if(ws.ok)fbH='<div class="fb-ok">✓ Bonne réponse !</div><div class="ref-ans"><strong>Réponse complète :</strong><br>'+fmt(card.answer)+'</div>';
-    else fbH='<div class="fb-ko">✗ '+(LRN.strict?'Réponse incomplète':'Pas tout à fait')+'</div>'+missingHtml(ws.res)+'<div class="ref-ans"><strong>Réponse correcte :</strong><br>'+fmt(card.answer)+'</div>';
+    else fbH='<div class="fb-ko">✗ '+(cardStrict(card,LRN.strict)?'Réponse incomplète':'Pas tout à fait')+'</div>'+missingHtml(ws.res)+'<div class="ref-ans"><strong>Réponse correcte :</strong><br>'+fmt(card.answer)+'</div>';
   }
   document.getElementById('learnArea').innerHTML=
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">'+
@@ -2059,8 +2080,8 @@ function renderLrnWrite(){
     '<div class="lq">'+(card.image?'<img src="'+card.image+'" class="card-img" alt="image">':'')+fmt(card.question)+'</div>'+
     '<div style="height:1px;background:var(--bd);margin:16px 0"></div>'+
     '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--ye);margin-bottom:10px">TA RÉPONSE</div>'+
-    '<textarea class="write-inp" id="wi" placeholder="'+(LRN.strict?'Cite tous les éléments attendus, dans l\'ordre que tu veux...':'Les idées clés et termes importants suffisent...')+'" '+(ws.done?'disabled':'')+'>'+esc(ws.ans||'')+'</textarea>'+
-    '<div class="write-hint">'+(LRN.strict?'Mode strict : chaque élément de la réponse doit apparaître — mais tu formules comme tu veux':'Pas besoin d\'écrire mot pour mot — les idées principales et termes importants suffisent')+' · Ctrl+Entrée pour valider</div>'+
+    '<textarea class="write-inp" id="wi" placeholder="'+(cardStrict(card,LRN.strict)?'Cite tous les éléments attendus, dans l\'ordre que tu veux...':'Les idées clés et termes importants suffisent...')+'" '+(ws.done?'disabled':'')+'>'+esc(ws.ans||'')+'</textarea>'+
+    '<div class="write-hint">'+(cardStrict(card,LRN.strict)?'Mode strict : chaque élément de la réponse doit apparaître — mais tu formules comme tu veux':'Pas besoin d\'écrire mot pour mot — les idées principales et termes importants suffisent')+' · Ctrl+Entrée pour valider</div>'+
     fbH+'</div>'+
     '<div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">'+
     (!ws.done?
@@ -2080,13 +2101,13 @@ function submitWrite(id){
   if(!ans){toast('Écris ta réponse');return;}
   var card=LRN.series.find(function(c){return c.id===id;});
   if(!card)return;
-  var res=checkAnswer(ans,card.answer,LRN.strict);
+  var res=checkAnswer(ans,card.answer,cardStrict(card,LRN.strict));
   LRN.writes[id]={done:true,ok:res.ok,ans:ans,res:res};
   LRN.results[id]=res.ok;
   bumpCard(id,res.ok);
   renderLrnWrite();
 }
-function overrideOk(id){if(LRN.writes[id]){LRN.writes[id].ok=true;LRN.results[id]=true;}renderLrnWrite();}
+function overrideOk(id){if(LRN.writes[id]){if(!LRN.writes[id].ok)fixFail(id);LRN.writes[id].ok=true;LRN.results[id]=true;}renderLrnWrite();}
 function skipWrite(id){LRN.writes[id]={done:true,ok:false,ans:'',res:null};LRN.results[id]=false;bumpCard(id,false);renderLrnWrite();}
 function lrnWriteNext(){LRN.si++;if(LRN.si>=LRN.series.length){LRN.qi++;processLrn();}else renderLrnWrite();}
 
@@ -2107,7 +2128,7 @@ function renderLrnFinal(){
     '<div class="stat-box"><div class="stat-n rd">'+(tot-yes)+'</div><div class="stat-l">À revoir</div></div>'+
     '<div class="stat-box"><div class="stat-n">'+pct+'%</div><div class="stat-l">Score</div></div>'+
     '</div>'+
-    verdictBox(pct,CUR.deck)+
+    verdictBox(pct,CUR.deck)+loopBoxHtml(CUR.deck)+
     '<div class="r-btns">'+
     '<button class="btn btn-ghost" onclick="learnHome()">🔁 Recommencer</button>'+
     '<button class="btn btn-primary" onclick="saveSession(\'learn\')">✓ Valider</button>'+
@@ -2131,7 +2152,7 @@ function evProgSave(){
     progSave('eval',{
       cardIds:EV.qs.map(function(q){return q.card?q.card.id:null;}),
       stems:EV.qs.map(function(q){return q.card?null:q.stem;}),
-      explanations:EV.qs.map(function(q){return q.explanation||null;}),
+      explanations:EV.qs.map(function(q){return q.explanation||null;}),pretest:!!EV.pretest,
       opts:EV.qs.map(function(q){return q.opts;}),
       qi:EV.qi,results:EV.results
     });
@@ -2177,13 +2198,14 @@ function resumeEval(){
     }
   }
   if(!qs){toast('Le cours a changé depuis ton dernier passage — nouveau QCM');evalHome();return;}
-  EV.scope='deck';EV.target='evalArea';
+  EV.scope='deck';EV.target='evalArea';EV.pretest=!!p.pretest;
   EV.qs=qs;EV.qi=Math.min(p.qi,qs.length-1);EV.results=p.results||[];
   renderEvalQ();
 }
 
 function startEval(){
   if(!CUR.deck)return;
+  EV.pretest=false;
   EV.scope='deck';EV.target='evalArea';
   var series=CUR.deck.qSeries;
   if(series&&series.length){
@@ -2207,6 +2229,22 @@ function startEval(){
   renderEvalQ();
 }
 
+var QIMP={rej:0,noOk:0};
+function startPretest(){
+  var p=CUR.deck&&CUR.deck.pretest;
+  if(!p||!p.length){toast('Aucun pré-test importé');return;}
+  EV.scope='deck';EV.target='evalArea';EV.pretest=true;
+  EV.qs=shuffle(p.slice()).map(function(q){return{stem:q.q,explanation:q.explanation||null,opts:shuffle(q.opts.map(function(o){return{t:o.t,ok:o.ok};}))};});
+  EV.qi=0;EV.results=[];renderEvalQ();
+}
+function renderPretestFinal(){
+  progClear('eval');
+  var tot=EV.qs.length,yes=EV.results.filter(function(r){return r.ok;}).length,pct=Math.round(yes/tot*100);
+  CUR.deck.pretestLast={pct:pct,date:Date.now()};dbSave();
+  document.getElementById('evalArea').innerHTML='<div class="result-card"><div class="r-em">🧪</div><div class="r-title">Pré-test terminé</div>'+
+    '<div class="r-sub">'+yes+' / '+tot+' ('+pct+'%) · non compté dans le planning</div>'+
+    '<div class="r-btns"><button class="btn btn-ghost" onclick="startPretest()">🔁 Refaire</button><button class="btn btn-primary" onclick="evalHome()">Terminer</button></div></div>';
+}
 function parseQSeries(raw){
   var seriesBlocks=raw.split(/\n===+[^\n]*\n|\n===+[^\n]*$|^===+[^\n]*\n/m).map(function(s){return s.trim();}).filter(Boolean);
   if(!seriesBlocks.length)seriesBlocks=[raw.trim()];
@@ -2228,13 +2266,13 @@ function parseQSeries(raw){
         }
       });
       return{q:stemLines.join(' ').trim(),opts:opts};
-    }).filter(function(q){return q.q&&q.opts.length>=2;});
+    }).filter(function(q){var ok=q.q&&q.opts.length>=2;if(!ok)QIMP.rej++;else if(!q.opts.some(function(o){return o.ok;}))QIMP.noOk++;return ok;});
   }).filter(function(s){return s.length;});
 }
 
 function openImportQ(){
   if(!CUR.deck)return;
-  document.getElementById('mImportQTxt').value='';
+  document.getElementById('mImportQTxt').value='';document.getElementById('mImportQPre').checked=false;
   openModal('mImportQ');
 }
 
@@ -2242,14 +2280,22 @@ function doImportQ(){
   if(!CUR.deck)return;
   var raw=document.getElementById('mImportQTxt').value.trim();
   if(!raw){toast('Colle du texte');return;}
+  QIMP={rej:0,noOk:0};
   var series=parseQSeries(raw);
   if(!series.length){toast('Aucune question reconnue — vérifie le format');return;}
+  var totalQ=series.reduce(function(a,s){return a+s.length;},0);
+  var rapport=(QIMP.rej?' · '+QIMP.rej+' rejetée(s)':'')+(QIMP.noOk?' · ⚠️ '+QIMP.noOk+' sans [correct]':'');
+  if(document.getElementById('mImportQPre').checked){
+    CUR.deck.pretest=[].concat.apply([],series);
+    dbSave();closeModal('mImportQ');
+    toast('Pré-test importé : '+CUR.deck.pretest.length+' question(s)'+rapport);
+    evalHome();return;
+  }
   CUR.deck.qSeries=series;
   CUR.deck.lastSeriesIdx=-1;
   dbSave();
   closeModal('mImportQ');
-  var totalQ=series.reduce(function(a,s){return a+s.length;},0);
-  toast(series.length+' série(s) importée(s), '+totalQ+' question(s) au total');
+  toast(series.length+' série(s), '+totalQ+' question(s)'+rapport);
   evalEntry();
 }
 
@@ -2269,7 +2315,7 @@ function evalHome(){
       'Aucune question importée — questions générées automatiquement depuis les flashcards')+
     '</div>'+
     '<button class="btn btn-primary" onclick="startEval()" style="margin-right:8px">▶️ Commencer l\'évaluation</button>'+
-    '<button class="btn btn-ghost" onclick="openImportQ()">📝 '+(n?'Remplacer les questions':'Importer des questions')+'</button>'+
+    '<button class="btn btn-ghost" onclick="openImportQ()">📝 '+(n?'Remplacer les questions':'Importer des questions')+'</button>'+(CUR.deck.pretest&&CUR.deck.pretest.length?'<button class="btn btn-ghost" onclick="startPretest()" style="margin-left:8px">🧪 Pré-test ('+CUR.deck.pretest.length+' q.)</button>':'')+
     '</div>';
 }
 
@@ -2350,6 +2396,7 @@ function submitQ(){
     if(oSet.has(i)&&sSet.has(i)){el.className='qopt locked q-ok';el.querySelector('.qcheck').textContent='✓';}
     else if(sSet.has(i)&&!oSet.has(i)){el.className='qopt locked q-ko';el.querySelector('.qcheck').textContent='✗';}
     else if(oSet.has(i)){el.className='qopt locked q-miss';el.querySelector('.qcheck').textContent='→';}
+    var tg=document.createElement('span');tg.textContent=oSet.has(i)?'VRAI':'FAUX';tg.style.cssText='margin-left:auto;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;white-space:nowrap;color:#fff;background:'+(oSet.has(i)?'var(--gr)':'var(--rd)');el.appendChild(tg);
   });
   var okL=okIdxs.map(function(i){return L[i];}).join(', ');
   var refText=q.explanation?esc(q.explanation):(q.card?esc(q.card.answer.replace(/\*\*/g,'').slice(0,150)):'');
@@ -2364,6 +2411,7 @@ function submitQ(){
 function nextQ(){EV.qi++;evProgSave();renderEvalQ();}
 
 function renderEvalFinal(){
+  if(EV.pretest&&EV.scope==='deck'){renderPretestFinal();return;}
   progClear('eval');
   var tot=EV.qs.length,yes=EV.results.filter(function(r){return r.ok;}).length;
   var pct=Math.round(yes/tot*100);
@@ -2525,14 +2573,14 @@ function renderExamFinal(){
 function renderCards(){
   if(!CUR.deck)return;
   var cards=CUR.deck.cards||[];
-  var nh=cards.filter(isHard).length;
-  document.getElementById('cardListMeta').innerHTML=cards.length+' flashcards'+(nh?' · <span style="color:var(--rd)">'+nh+' difficile'+(nh>1?'s':'')+'</span>':'');
+  var nh=cards.filter(isHard).length,nl=cards.filter(isLoop).length;
+  document.getElementById('cardListMeta').innerHTML=cards.length+' flashcards'+(nh?' · <span style="color:var(--rd)">'+nh+' difficile'+(nh>1?'s':'')+'</span>':'')+(nl?' · <span style="color:var(--rd)">'+nl+' bloquée'+(nl>1?'s':'')+'</span>':'');
   var el=document.getElementById('cardList');
   if(!cards.length){
     el.innerHTML='<div class="empty"><div class="empty-i">🃏</div><div class="empty-t">Aucune carte</div><div class="empty-s">Ajoute ou importe des cartes</div></div>';
     return;
   }
-  el.innerHTML='';
+  el.innerHTML='';el.insertAdjacentHTML('afterbegin',loopBoxHtml(CUR.deck));
   cards.forEach(function(c,i){
     var item=document.createElement('div');
     item.className='fc-item';
@@ -2542,7 +2590,7 @@ function renderCards(){
     item.innerHTML=
       '<div class="drag-handle" title="Glisser pour réorganiser">⠿</div>'+
       '<div class="fci-q"><span style="font-size:11px;color:var(--tx3)">Q'+(i+1)+'</span>'+(c.image?' 🖼️':'')+
-        (isHard(c)?'<span class="hot-badge">🔥 '+s.ko+' ratées</span>':'')+'<br>'+esc(c.question.slice(0,100))+(c.question.length>100?'…':'')+'</div>'+
+        (c.type==='strict'?'<span class="hot-badge" style="opacity:.8">🎯 exact</span>':'')+(isLoop(c)?'<span class="hot-badge">🔁 bloquée</span>':'')+(isHard(c)?'<span class="hot-badge">🔥 '+s.ko+' ratées</span>':'')+'<br>'+esc(c.question.slice(0,100))+(c.question.length>100?'…':'')+'</div>'+
       '<div class="fci-a">'+esc(c.answer.replace(/\*\*/g,'').slice(0,80))+(c.answer.length>80?'…':'')+'</div>'+
       '<div class="fci-acts">'+
       '<button class="fci-btn" onclick="editCard(\''+c.id+'\')">✏️</button>'+
@@ -2977,7 +3025,7 @@ function openCardModal(){
   if(!CUR.deck){toast('Ouvre d\'abord un cours');return;}
   EDIT_CARD_ID=null;PENDING_IMG=null;
   document.getElementById('mCardTitle').textContent='Nouvelle flashcard';
-  document.getElementById('mCardQ').value='';document.getElementById('mCardA').value='';
+  document.getElementById('mCardQ').value='';document.getElementById('mCardA').value='';document.getElementById('mCardStrict').checked=false;
   resetImgUI();openModal('mCard');
 }
 function editCard(id){
@@ -2986,12 +3034,12 @@ function editCard(id){
   EDIT_CARD_ID=id;PENDING_IMG=undefined;
   document.getElementById('mCardTitle').textContent='Modifier la carte';
   document.getElementById('mCardQ').value=c.question;
-  document.getElementById('mCardA').value=c.answer;
+  document.getElementById('mCardA').value=c.answer;document.getElementById('mCardStrict').checked=c.type==='strict';
   resetImgUI();
   if(c.image){showImgPreview(c.image);PENDING_IMG=c.image;}
   openModal('mCard');
 }
-function openImport(){document.getElementById('mImportTxt').value='';openModal('mImport');}
+function openImport(){document.getElementById('mImportTxt').value='';document.getElementById('mImportStrict').checked=false;openModal('mImport');}
 
 // ════════════════════════════════════════
 // SAVE / DELETE
@@ -3055,14 +3103,15 @@ function saveCard(){
   if(!CUR.deck)return;
   var q=document.getElementById('mCardQ').value.trim();
   var a=document.getElementById('mCardA').value.trim();
+  var strictChk=document.getElementById('mCardStrict').checked;
   if(!q||!a){toast('Remplis question et réponse');return;}
   var img=PENDING_IMG||null;
   if(!CUR.deck.cards)CUR.deck.cards=[];
   if(EDIT_CARD_ID){
     var c=CUR.deck.cards.find(function(x){return x.id===EDIT_CARD_ID;});
-    if(c){c.question=q;c.answer=a;if(img!==undefined)c.image=img;}
+    if(c){c.question=q;c.answer=a;if(img!==undefined)c.image=img;if(strictChk)c.type='strict';else delete c.type;if(c.stats)c.stats.streak=0;}
   } else {
-    CUR.deck.cards.push({id:uid(),question:q,answer:a,image:img,stats:{ok:0,ko:0}});
+    CUR.deck.cards.push({id:uid(),question:q,answer:a,image:img,type:strictChk?'strict':undefined,stats:{ok:0,ko:0}});
   }
   PENDING_IMG=null;EDIT_CARD_ID=null;dbSave();closeModal('mCard');renderCards();toast('Carte sauvegardée !');
 }
@@ -3071,17 +3120,32 @@ function doImport(){
   if(!CUR.deck)return;
   var raw=document.getElementById('mImportTxt').value.trim();
   if(!raw){toast('Colle du texte');return;}
-  var blocks=raw.split(/\n---\n|\n---$|^---\n/m).map(function(b){return b.trim();}).filter(Boolean);
-  var n=0;
+  var forceStrict=document.getElementById('mImportStrict').checked;
+  // Une ligne « === STRICT » : tout ce qui suit est en faits exacts
+  var parts=[[raw,forceStrict]];
+  var mk=raw.search(/^[ \t]*=+[ \t]*STRICT\b.*$/im);
+  if(mk>=0)parts=[[raw.slice(0,mk),forceStrict],[raw.slice(mk).replace(/^\s*=+[ \t]*STRICT\b.*\n?/i,''),true]];
+  var n=0,nS=0,dup=0,rej=0;
   if(!CUR.deck.cards)CUR.deck.cards=[];
-  blocks.forEach(function(blk){
-    var lines=blk.split('\n').filter(function(l){return l.trim();});
-    if(lines.length<2)return;
-    var q=lines[0].replace(/^\*\*|\*\*$/g,'').trim();
-    var a=lines.slice(1).join('\n').trim();
-    if(q&&a){CUR.deck.cards.push({id:uid(),question:q,answer:a,stats:{ok:0,ko:0}});n++;}
+  var seen={};CUR.deck.cards.forEach(function(c){seen[c.question.trim().toLowerCase()]=1;});
+  parts.forEach(function(pt){
+    var blocks=pt[0].split(/\n---\s*\n|\n---\s*$|^---\s*\n/m).map(function(b){return b.trim();}).filter(Boolean);
+    blocks.forEach(function(blk){
+      var lines=blk.split('\n').filter(function(l){return l.trim();});
+      if(lines.length<2){rej++;return;}
+      var q=lines[0].replace(/^\*\*|\*\*$/g,'').trim();
+      var a=lines.slice(1).join('\n').trim();
+      if(!q||!a){rej++;return;}
+      var k=q.toLowerCase();
+      if(seen[k]){dup++;return;}
+      seen[k]=1;
+      var c={id:uid(),question:q,answer:a,stats:{ok:0,ko:0}};
+      if(pt[1]){c.type='strict';nS++;}
+      CUR.deck.cards.push(c);n++;
+    });
   });
-  dbSave();closeModal('mImport');renderCards();toast(n+' cartes importées !');
+  dbSave();closeModal('mImport');renderCards();
+  toast(n+' carte(s) importée(s)'+(nS?' dont '+nS+' strictes 🎯':'')+(dup?' · '+dup+' doublon(s) ignoré(s)':'')+(rej?' · '+rej+' rejetée(s)':''));
 }
 
 function delFolder(id){if(!confirm('Supprimer cette matière et tous ses cours ?'))return;D.folders=D.folders.filter(function(f){return f.id!==id;});dbSave();renderHome();toast('Supprimé');}
@@ -3328,7 +3392,7 @@ setPersistence(auth, browserLocalPersistence).catch(function(e){ console.warn('P
 // ════════════════════════════════════════
 // Clé VAPID à récupérer dans la console Firebase :
 // Project Settings -> Cloud Messaging -> Web Push certificates -> "Generate key pair"
-const VAPID_KEY = "BG2yuuxT9nFRe2gk5UiyF6apu17dq8r3q2m6QCX8tdsG4FdhdYMAqn62RIOuEn0IrPZGLDfKKolYeEvKc5pM6bI";
+const VAPID_KEY = "COLLE_TA_CLE_VAPID_ICI";
 let messaging = null;
 try { messaging = getMessaging(app); } catch(e){ console.warn('FCM indisponible sur cet appareil', e); }
 

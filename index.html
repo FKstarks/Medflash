@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v11.7-2026-10-07-2025">
+<meta name="app-build" content="v11.9-2026-10-07-2215">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -1153,6 +1153,59 @@ function dueToday(deck){
   return (deck.plan||[]).some(function(e){return !e.done&&e.date===t;});
 }
 
+// Solidité d'un cours : fragile = peu de révisions, scores faibles ou réapprentissage
+function deckFragile(deck){
+  var dn=(deck.plan||[]).filter(function(e){return e.done&&typeof e.score==='number';});
+  if(deck.relearn||dn.length<3)return true;
+  dn.sort(function(a,b){return (a.doneDate||'')<(b.doneDate||'')?-1:1;});
+  var l=dn.slice(-3),avg=l.reduce(function(a,e){return a+e.score;},0)/l.length;
+  return avg<55;
+}
+// Retard : décale les J suivants ; si ça dépasse l'examen, resserre les écarts (puis retire en dernier recours)
+function fitPlanAfterDelay(deck,entry,oldDate,lateBy,t){
+  var f=folderOf(deck),exam=f&&f.examDate?f.examDate:null,L=exam?addDays(exam,-1):null;
+  var base=tsToStr(deck.createdAt);
+  var pend=deck.plan.filter(function(e){return !e.done&&e!==entry&&e.date>oldDate;});
+  sortPlan(pend);
+  if(!pend.length)return;
+  var nd=pend.map(function(e){return addDays(e.date,lateBy);});
+  var note='';
+  if(!L||nd[nd.length-1]<=L){
+    pend.forEach(function(e,k){e.date=nd[k];});
+  } else {
+    var tm=addDays(t,1),start=deckFragile(deck)?tm:(nd[0]<L?nd[0]:L);if(start<tm)start=tm;
+    if(L<tm){ // plus de place avant l'examen
+      deck.plan=deck.plan.filter(function(e){return pend.indexOf(e)<0;});
+      note='plus de place avant l\'examen : '+pend.length+' révision(s) retirée(s)';
+      pend=[];
+    } else {
+      var g=deckFragile(deck)?1:2,W=diffDays(start,L),slots=Math.floor(W/g)+1,n=pend.length,keep=pend,dates;
+      if(n>slots){
+        // trop de révisions pour la place restante : on garde les mieux réparties (toujours la dernière)
+        keep=[];for(var q=0;q<slots;q++)keep.push(pend[slots===1?n-1:Math.round(q*(n-1)/(slots-1))]);
+        var rm=pend.filter(function(e){return keep.indexOf(e)<0;});
+        deck.plan=deck.plan.filter(function(e){return rm.indexOf(e)<0;});
+        note=rm.length+' révision(s) retirée(s) (plus assez de jours)';
+      } else note='écarts resserrés pour tenir avant l\'examen';
+      var k=keep.length,first=nd[pend.indexOf(keep[0])],last=nd[pend.indexOf(keep[k-1])];
+      if(first<start)first=start;
+      var span=Math.max(1,diffDays(first,last));
+      dates=keep.map(function(e,x){
+        var d0=nd[pend.indexOf(e)];if(d0<first)d0=first;
+        return addDays(start,Math.round(diffDays(first,d0)*W/span));
+      });
+      dates[k-1]=L;
+      for(var a=1;a<k;a++){if(diffDays(dates[a-1],dates[a])<g)dates[a]=addDays(dates[a-1],g);}
+      for(var b=k-2;b>=0;b--){if(diffDays(dates[b],dates[b+1])<g)dates[b]=addDays(dates[b+1],-g);}
+      keep.forEach(function(e,x){e.date=dates[x];});
+    }
+  }
+  // numérotation des J = jours depuis la création
+  if(base)deck.plan.forEach(function(e){if(!e.done&&e.date>oldDate)e.off=diffDays(base,e.date);});
+  var seen={};deck.plan=deck.plan.filter(function(e){if(e.done)return true;if(seen[e.date])return false;seen[e.date]=1;return true;});
+  if(note){try{var nm=deck.name;setTimeout(function(){toast('🗓️ '+nm+' : '+note);},1800);}catch(_){}}
+}
+
 // Marque une échéance comme faite + adapte la suite
 function completeEntry(deck,score,entryId){
   if(!deck.plan)deck.plan=[];
@@ -1175,7 +1228,9 @@ function completeEntry(deck,score,entryId){
     deck.plan.push(entry);
   }
   var lateBy=Math.max(0,diffDays(entry.date,t));
+  var wasDone=!!entry.done,oldDate=entry.date;
   entry.done=true;entry.doneDate=t;entry.score=score;entry.lateBy=lateBy;
+  if(!wasDone&&lateBy>0){fitPlanAfterDelay(deck,entry,oldDate,lateBy,t);}
   try{pushRev(folderOf(deck),deck,entry,t);}catch(e){console.error(e);}
   adaptPlan(deck,score,t);
   sortPlan(deck.plan);
@@ -1357,8 +1412,12 @@ function allDue(){
   var out=[],t=today();
   D.folders.forEach(function(f){
     (f.decks||[]).forEach(function(d){
-      (deckPending(d)?[]:(d.plan||[])).forEach(function(e){
-        if(e.done)return;
+      var pl=(deckPending(d)?[]:(d.plan||[])).filter(function(e){return !e.done;});
+      pl.sort(function(a,b){return a.date<b.date?-1:1;});
+      var gotDue=false;
+      pl.forEach(function(e){
+        // un cours = une seule échéance due/en retard (la plus ancienne) ; les suivantes seront décalées
+        if(e.date<=t){if(gotDue)return;gotDue=true;}
         out.push({folder:f,deck:d,entry:e,late:diffDays(e.date,t)});
       });
     });
@@ -1403,7 +1462,7 @@ function renderSubjects(){
     totalCards+=(f.decks||[]).reduce(function(s,d){return s+(d.cards||[]).length;},0);
     (f.decks||[]).forEach(function(d){
       if(deckPending(d)){if((d.cards||[]).length)pendingTotal++;return;}
-      (d.plan||[]).forEach(function(e){if(!e.done&&e.date<=t)dueTotal++;});
+      if((d.plan||[]).some(function(e){return !e.done&&e.date<=t;}))dueTotal++;
     });
   });
   var ov=document.getElementById('subjectsOverview');
@@ -1415,7 +1474,8 @@ function renderSubjects(){
     var tc=(f.decks||[]).reduce(function(s,d){return s+(d.cards||[]).length;},0);
     var late=0,due=0;
     (f.decks||[]).forEach(function(d){
-      (deckPending(d)?[]:(d.plan||[])).forEach(function(e){if(e.done)return;if(e.date<t)late++;else if(e.date===t)due++;});
+      var _p=(deckPending(d)?[]:(d.plan||[])).filter(function(e){return !e.done&&e.date<=t;});
+      if(_p.length){_p.sort(function(a,b){return a.date<b.date?-1:1;});if(_p[0].date<t)late++;else due++;}
     });
     var chip='';
     if(f.examDate){var dj=diffDays(t,f.examDate);var cls=dj<=7?'urgent':dj<=21?'soon':'';chip='<div class="exam-chip '+cls+'">🎯 '+(dj>0?'J-'+dj:dj===0?"Examen aujourd'hui":'Examen passé')+'</div>';}

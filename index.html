@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v11.4-2026-10-07-1955">
+<meta name="app-build" content="v11.5-2026-10-07-2005">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -3951,7 +3951,7 @@ document.querySelectorAll('.overlay').forEach(function(o){o.addEventListener('cl
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut as fbSignOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-messaging.js";
 
 const firebaseConfig = {
@@ -4162,14 +4162,16 @@ function fsDec(v){
   return v;
 }
 
+// ── Stockage découpé (v2) : users/{uid}/data/main = réglages + matières + plannings (léger)
+//    users/{uid}/data/deck_<id> = cartes + séries de questions d'UN cours (limite 1 Mo par cours)
+var _deckSaved={};   // dernière version envoyée de chaque cours (pour n'envoyer que ce qui change)
+var _cloudDeckIds=[]; // cours présents dans le cloud
 async function loadFromCloud(uid){
   try{
     var ref = doc(db,'users',uid,'data','main');
     var snap = await getDoc(ref);
     if(snap.exists()){
       var data=snap.data();
-      // Sécurité : si la copie de cet appareil est plus récente que celle du cloud
-      // (ex. le cloud n'a pas pu être mis à jour), on GARDE l'appareil et on renvoie au cloud.
       var localTs=parseInt(localStorage.getItem('mf3_ts')||'0',10);
       var cloudTs=(data&&data.updatedAt)||0;
       if(localTs>cloudTs+1000){
@@ -4177,13 +4179,31 @@ async function loadFromCloud(uid){
         if(D.folders&&D.folders.length){ await saveToCloud(uid); return; }
       }
       if(data&&data.folders){
-        D.folders=fsDec(data.folders);
+        var legacy=(data.v!==2);
+        var folders=fsDec(data.folders);
+        if(legacy){
+          // Ancien format : tout dans un seul document. On garde une copie de sécurité puis on migre.
+          try{ await setDoc(doc(db,'users',uid,'data','backup_v1'),data); }catch(e){ console.error('Backup impossible',e); throw e; }
+        } else {
+          // Nouveau format : on recharge les cartes de chaque cours
+          var localDecks={};
+          try{ var lp=JSON.parse(localStorage.getItem('mf3')||'{}'); (lp.folders||[]).forEach(function(f){(f.decks||[]).forEach(function(d){localDecks[d.id]=d;});}); }catch(e){}
+          var jobs=[];
+          folders.forEach(function(f){ (f.decks||[]).forEach(function(d){
+            jobs.push(getDoc(doc(db,'users',uid,'data','deck_'+d.id)).then(function(ds){
+              if(ds.exists()){ var x=ds.data(); d.cards=fsDec(x.cards||[]); if(x.qSeries!==undefined)d.qSeries=fsDec(x.qSeries); _deckSaved[d.id]=JSON.stringify({cards:d.cards,qSeries:d.qSeries}); }
+              else { var l=localDecks[d.id]; d.cards=l?(l.cards||[]):[]; if(l&&l.qSeries!==undefined)d.qSeries=l.qSeries; }
+            }));
+          }); });
+          await Promise.all(jobs);
+        }
+        D.folders=folders;
         D.progress=fsDec(data.progress||{});
-        D.examProgress=fsDec(data.examProgress||{});D.settings=fsDec(data.settings||{});
-        // On ecrit tout de suite dans localStorage : sinon init() -> dbLoad()
-        // ecraserait les donnees du cloud avec la copie locale (perimee sur un
-        // autre appareil). C'est ce qui cassait la sync entre Mac / iPad / iPhone.
+        D.examProgress=fsDec(data.examProgress||{});
+        D.settings=fsDec(data.settings||{});
+        _cloudDeckIds=[];folders.forEach(function(f){(f.decks||[]).forEach(function(d){_cloudDeckIds.push(d.id);});});
         try{ localStorage.setItem('mf3', JSON.stringify(D)); localStorage.setItem('mf3_ts', String((data&&data.updatedAt)||Date.now())); }catch(e){}
+        if(legacy){ await saveToCloud(uid); }
       }
     } else {
       await saveToCloud(uid);
@@ -4194,14 +4214,27 @@ async function loadFromCloud(uid){
 async function saveToCloud(uid){
   try{
     var ref = doc(db,'users',uid,'data','main');
-    // Firestore refuse les tableaux imbriqués (tableau dans un tableau) : c'est le cas
-    // des séries de questions importées (qSeries) et des options d'une évaluation en pause.
-    // On les encode avant l'envoi (fsEnc) et on les décode au chargement (fsDec).
     var clean = JSON.parse(JSON.stringify({folders:D.folders,progress:D.progress||{},examProgress:D.examProgress||{},settings:D.settings||{}}));
-    // Cours dont le J0 n'est pas fait : on n'envoie pas leur planning au cloud,
-    // pour qu'ils ne déclenchent aucun rappel/notification côté serveur.
+    // Cours dont le J0 n'est pas fait : pas de planning au cloud (aucun rappel côté serveur).
     clean.folders.forEach(function(f){ (f.decks||[]).forEach(function(d){ if(deckPending(d)) d.plan=[]; }); });
-    await setDoc(ref,{folders:fsEnc(clean.folders),progress:fsEnc(clean.progress),examProgress:fsEnc(clean.examProgress),settings:fsEnc(clean.settings||{}),updatedAt:Date.now()});
+    // On sépare le contenu lourd (cartes + séries) de chaque cours
+    var heavy={},ids=[];
+    clean.folders.forEach(function(f){ (f.decks||[]).forEach(function(d){
+      heavy[d.id]=JSON.stringify({cards:d.cards||[],qSeries:d.qSeries});
+      ids.push(d.id); delete d.cards; delete d.qSeries;
+    }); });
+    var jobs=[];
+    ids.forEach(function(id){
+      if(_deckSaved[id]===heavy[id])return;
+      var o=JSON.parse(heavy[id]);
+      var pl={cards:fsEnc(o.cards),updatedAt:Date.now()}; if(o.qSeries!==undefined)pl.qSeries=fsEnc(o.qSeries);
+      jobs.push(setDoc(doc(db,'users',uid,'data','deck_'+id),pl).then(function(){_deckSaved[id]=heavy[id];}));
+    });
+    await Promise.all(jobs);  // les cours d'abord, le document principal ensuite
+    await setDoc(ref,{v:2,folders:fsEnc(clean.folders),progress:fsEnc(clean.progress),examProgress:fsEnc(clean.examProgress),settings:fsEnc(clean.settings||{}),updatedAt:Date.now()});
+    // Nettoyage des cours supprimés
+    _cloudDeckIds.filter(function(id){return ids.indexOf(id)<0;}).forEach(function(id){ deleteDoc(doc(db,'users',uid,'data','deck_'+id)).catch(function(){}); delete _deckSaved[id]; });
+    _cloudDeckIds=ids;
   } catch(e){
     console.error('Erreur sauvegarde:',e);
     try{ toast('⚠️ Sauvegarde cloud impossible — tes données restent sur cet appareil'); }catch(_){}

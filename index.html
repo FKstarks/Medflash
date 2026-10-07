@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v11.5-2026-10-07-2005">
+<meta name="app-build" content="v11.7-2026-10-07-2025">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -541,6 +541,7 @@ body.logged-out #sLogin{position:static!important;top:auto!important}
     <div class="panel-card dashboard-list-card">
       <div class="panel-head"><h3>⚡ À réviser aujourd'hui</h3><button class="mini-link" onclick="openReviews()">Tout voir</button></div>
       <div id="homeDueList" class="dashboard-list"></div>
+      <div id="homeNewRoneos" class="home-newroneos"></div>
     </div>
     <div class="dashboard-side-stack">
       <div class="panel-card start-compact dashboard-start-card" id="homePendingPanel"></div>
@@ -1388,6 +1389,7 @@ function renderHome(){
   renderDashboard();
   renderHomeToday();
   renderSemesterMini();
+  renderNewRoneos();
   renderExamMini();
   renderSubjects(); // maintient aussi l'écran Matières à jour quand des données changent
 }
@@ -1441,12 +1443,44 @@ function renderDashboard(){
     '<div class="dash-kpi start" onclick="openReviews()"><div class="dk-icon">🚀</div><div class="dk-main"><div style="font-size:12px;color:var(--ac2);font-weight:700">Cours à démarrer</div><div class="dk-n" style="margin-top:4px">'+n.pending.length+' cours</div><div class="dk-l">Prêts à commencer · J0 à faire</div></div><div class="dash-arrow">›</div></div>';
 }
 function scrollToPending(){openReviews();}
+function renderNewRoneos(){
+  var el=document.getElementById('homeNewRoneos');if(!el)return;
+  var c=suiviCache(),t=today();
+  var head=function(tag){return '<div class="panel-head"><h3>🆕 Dernières ronéos ajoutées'+(tag||'')+'</h3><button class="mini-link" onclick="openSuivi()">Voir le suivi</button></div>';};
+  if(!c||!c.subj){el.innerHTML=head()+'<div class="dashboard-empty">Relie ton Suivi pour voir les nouvelles ronéos</div>';return;}
+  var by={},seen={};
+  c.subj.forEach(function(o){(o.cs||[]).forEach(function(cc){(cc.files||[]).forEach(function(f){
+    var k=f.u||f.n;if(seen[k]||!f.s)return;seen[k]=1;
+    var d=by[f.s]=by[f.s]||{};var m=d[o.n]=d[o.n]||{n:0,e:o.e||'📘'};m.n++;
+  });});});
+  var days=Object.keys(by).sort().reverse().slice(0,3);
+  if(!days.length){el.innerHTML=head()+'<div class="dashboard-empty">Aucune ronéo pour l\'instant</div>';return;}
+  var week=0,lim=addDays(t,-7);Object.keys(by).forEach(function(d){if(d>=lim)Object.keys(by[d]).forEach(function(n){week+=by[d][n].n;});});
+  el.innerHTML=head(week?' <span class="tag tag-soon" style="margin-left:6px">'+week+' cette semaine</span>':'')+
+    days.map(function(d){
+      var tot=0;Object.keys(by[d]).forEach(function(n){tot+=by[d][n].n;});
+      var lab=d===t?"Aujourd'hui":d===addDays(t,-1)?'Hier':prettyDLong(d);
+      return '<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:700;color:var(--tx2);margin-bottom:5px">'+lab+' · '+tot+' ronéo'+(tot>1?'s':'')+'</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+
+        Object.keys(by[d]).map(function(n){var m=by[d][n];return '<span class="tag" style="background:var(--s2);padding:4px 9px">'+m.e+' '+esc(n)+' · '+m.n+'</span>';}).join('')+'</div></div>';
+    }).join('');
+}
 function renderSemesterMini(){
   var el=document.getElementById('semesterMini');if(!el)return;
   var cache=null;try{cache=JSON.parse(localStorage.getItem('mf_suivi_cache')||'null')}catch(e){}
-  if(cache&&cache.summary){var x=cache.summary;var pct=x.total?Math.round(x.learned/x.total*100):0;el.innerHTML='<div class="panel-head"><h3>📚 Avancement du semestre</h3><button class="mini-link" onclick="openSuivi()">Voir le suivi</button></div><div style="font-family:Syne,sans-serif;font-size:24px;font-weight:800">'+x.learned+' / '+x.total+' <span style="font:500 12px DM Sans;color:var(--tx2)">cours appris</span></div><div class="gauge-bar" style="margin:11px 0 8px"><div class="gauge-fill g-gr" style="width:'+pct+'%"></div></div><div style="font-size:12px;color:var(--tx2)">'+(x.available||0)+' ronéos disponibles · '+(x.doneFac||0)+' cours faits à la fac</div>';return;}
+  if(cache&&cache.summary){
+    var x=cache.summary,fac=x.doneFac||0,L=x.learned||0,av=x.available||0;
+    var toLearn=Math.max(0,av-L),wait=Math.max(0,fac-av);
+    var pct=fac?Math.min(100,Math.round(L/fac*100)):0;
+    var col=pct>=75?'g-gr':pct>=45?'g-ye':'g-rd';
+    el.innerHTML='<div class="panel-head"><h3>🚀 Mon rythme</h3><button class="mini-link" onclick="openSuivi()">Voir le suivi</button></div>'+
+      '<div style="font-family:Syne,sans-serif;font-size:24px;font-weight:800">'+L+' / '+fac+' <span style="font:500 12px DM Sans;color:var(--tx2)">appris sur faits à la fac</span></div>'+
+      '<div class="gauge-bar" style="margin:11px 0 8px"><div class="gauge-fill '+col+'" style="width:'+pct+'%"></div></div>'+
+      '<div style="font-size:12px;color:var(--tx2);margin-bottom:4px">📚 '+L+' appris sur <b>'+av+'</b> ronéo'+(av>1?'s':'')+' au total</div>'+
+      '<div style="font-size:12px;color:var(--tx2)">📄 '+toLearn+' ronéo'+(toLearn>1?'s':'')+' à apprendre'+(wait?' · 🕐 '+wait+' en attente de ronéo':'')+' · '+pct+'%</div>';
+    return;
+  }
   var started=0,total=0;D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){total++;if(!deckPending(d))started++;});});var pct=total?Math.round(started/total*100):0;
-  el.innerHTML='<div class="panel-head"><h3>📚 Avancement MedFlash</h3><button class="mini-link" onclick="openSuivi()">Suivi semestre</button></div><div style="font-family:Syne,sans-serif;font-size:24px;font-weight:800">'+started+' / '+total+' <span style="font:500 12px DM Sans;color:var(--tx2)">cours démarrés</span></div><div class="gauge-bar" style="margin:11px 0 8px"><div class="gauge-fill g-gr" style="width:'+pct+'%"></div></div><div style="font-size:12px;color:var(--tx2)">Le suivi fac/ronéo sera affiché ici dès que la passerelle Apps Script sera reliée.</div>';
+  el.innerHTML='<div class="panel-head"><h3>📚 Avancement MedFlash</h3><button class="mini-link" onclick="openSuivi()">Suivi semestre</button></div><div style="font-family:Syne,sans-serif;font-size:24px;font-weight:800">'+started+' / '+total+' <span style="font:500 12px DM Sans;color:var(--tx2)">cours démarrés</span></div><div class="gauge-bar" style="margin:11px 0 8px"><div class="gauge-fill g-gr" style="width:'+pct+'%"></div></div><div style="font-size:12px;color:var(--tx2)">Relie ton Suivi pour voir ton rythme d\'apprentissage (appris / faits à la fac).</div>';
 }
 function renderExamMini(){var el=document.getElementById('examMini');if(!el)return;var t=today();var fs=D.folders.filter(function(f){return f.examDate&&f.examDate>=t;}).sort(function(a,b){return a.examDate<b.examDate?-1:1;}).slice(0,4);el.innerHTML='<div class="panel-head"><h3>🎓 Prochains examens</h3><button class="mini-link" onclick="openCalendar()">Voir le planning</button></div>'+(fs.length?fs.map(function(f){var d=diffDays(t,f.examDate);return '<div class="subject-progress-row"><span>'+f.emoji+'</span><div class="sp-name">'+esc(f.name)+'</div><span class="tag '+(d<=7?'tag-late':'tag-soon')+'">J-'+d+'</span></div>';}).join(''):'<div style="font-size:12px;color:var(--tx2)">Aucun examen renseigné.</div>');}
 
@@ -3146,7 +3180,7 @@ function syncSuivi(silent){
     localStorage.setItem('mf_suivi_cache',JSON.stringify({r:d.r,ts:Date.now(),subj:d.subj,agenda:d.agenda||[],hier:d.hier||[],revHier:d.revHier||[],revToday:d.revToday||[],summary:suiviSummary(d.subj)}));
     flushRev();
     if(!silent)toast('Suivi à jour ✓');
-    renderSuivi();renderSemesterMini();
+    renderSuivi();renderSemesterMini();renderNewRoneos();
   }).catch(function(e){
     console.error(e);
     if(!silent)toast('Suivi inaccessible — vérifie le lien /exec, la clé et le déploiement (accès : Tout le monde)');
@@ -3983,7 +4017,7 @@ setPersistence(auth, browserLocalPersistence).catch(function(e){ console.warn('P
 // ════════════════════════════════════════
 // Clé VAPID à récupérer dans la console Firebase :
 // Project Settings -> Cloud Messaging -> Web Push certificates -> "Generate key pair"
-const VAPID_KEY = "COLLE_TA_CLE_VAPID_ICI";
+const VAPID_KEY = "BG2yuuxT9nFRe2gk5UiyF6apu17dq8r3q2m6QCX8tdsG4FdhdYMAqn62RIOuEn0IrPZGLDfKKolYeEvKc5pM6bI";
 let messaging = null;
 try { messaging = getMessaging(app); } catch(e){ console.warn('FCM indisponible sur cet appareil', e); }
 
@@ -4300,6 +4334,7 @@ document.getElementById('authEmail').addEventListener('keydown', function(e){
 .wk-col{position:relative;border-left:1px solid var(--bd)}.wk-col.today{background:rgba(108,99,255,.05)}.wk-line{position:absolute;left:0;right:0;border-top:1px solid var(--bd);opacity:.6}
 .wk-ev{position:absolute;margin:0;padding:3px 5px;overflow:hidden;font-size:10.5px;line-height:1.25;border-left-width:3px;border-radius:7px}
 .fac-cm.wk-ev{border-left-color:#3b82f6}.fac-ed.wk-ev{border-left-color:#10b981}.fac-tp.wk-ev{border-left-color:#f59e0b}.fac-exam.wk-ev{border-left-color:#ef4444}
+.home-newroneos{margin-top:auto;padding-top:14px;margin-top:16px;border-top:1px solid var(--bd)}.home-newroneos .panel-head{margin-bottom:10px}@media(min-width:900px){.dashboard-list-card .home-newroneos{margin-top:auto}}
 </style>
 <div id="pwaBar"></div>
 <script>

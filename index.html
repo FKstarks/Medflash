@@ -404,6 +404,48 @@ body{-webkit-overflow-scrolling:touch}
   nav .nav-r .theme-btn:nth-of-type(1){display:none}
 }
 
+
+/* ===== V11.1 — vraie navigation par espaces (style application desktop) ===== */
+.section-page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.subjects-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.subject-overview-kpi{background:var(--s1);border:1px solid var(--bd);border-radius:16px;padding:14px 16px;box-shadow:var(--sh2)}
+.subject-overview-kpi b{font-family:'Syne',sans-serif;font-size:22px;display:block}.subject-overview-kpi span{font-size:12px;color:var(--tx2)}
+.dashboard-main-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(360px,.9fr);gap:16px;min-height:0}
+.dashboard-side-stack{display:grid;grid-template-rows:auto 1fr;gap:14px;min-height:0}
+.dashboard-bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;min-height:0}
+.dashboard-list-card,.dashboard-start-card{min-height:0}
+.dashboard-list{display:flex;flex-direction:column;gap:8px;min-height:0}
+.dashboard-list .today-row{margin-bottom:0}
+.dashboard-empty{padding:22px 12px;text-align:center;color:var(--tx3);font-size:13px}
+.review-columns{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(320px,.75fr);gap:16px;align-items:start}
+.review-section{background:var(--s1);border:1px solid var(--bd);border-radius:18px;padding:18px;box-shadow:var(--sh2);margin-bottom:16px}
+.review-section .today-row:last-child{margin-bottom:0}
+.review-upcoming{display:flex;flex-direction:column;gap:8px}.review-upcoming .today-row{margin-bottom:0}
+
+@media(min-width:900px){
+  html,body,#app{height:100%;min-height:0}
+  body{overflow:hidden;padding-left:210px}
+  #app{overflow:hidden}
+  nav{position:fixed;top:0;left:210px;right:0;height:61px;padding:12px 24px}
+  .screen{position:absolute;top:61px;left:0;right:0;bottom:0;width:auto;max-width:none;margin:0;padding:26px 28px;overflow:auto}
+  .dashboard-screen.active{display:flex;flex-direction:column;overflow:hidden}
+  .dashboard-heading{margin-bottom:16px;flex:none}
+  .dashboard-screen .home-dashboard{flex:none;margin-bottom:16px}
+  .dashboard-main-grid{flex:1;overflow:hidden}
+  .dashboard-list-card{overflow:hidden;display:flex;flex-direction:column}
+  .dashboard-list{overflow:auto;padding-right:3px}
+  .dashboard-start-card{overflow:hidden}
+  .dashboard-bottom-grid>.panel-card{overflow:hidden}
+  .subjects-grid{align-content:start}
+}
+@media(max-width:1100px) and (min-width:900px){
+  .dashboard-main-grid{grid-template-columns:1fr 360px}.dashboard-bottom-grid{grid-template-columns:1fr}.dashboard-bottom-grid #semesterMini{display:none}
+}
+@media(max-width:899px){
+  .dashboard-main-grid,.review-columns{grid-template-columns:1fr}.dashboard-bottom-grid{grid-template-columns:1fr 1fr}.subjects-overview{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:640px){.dashboard-bottom-grid{grid-template-columns:1fr}.subjects-overview{grid-template-columns:repeat(2,1fr)}}
+
 </style>
 </head>
 <body>
@@ -413,9 +455,9 @@ body{-webkit-overflow-scrolling:touch}
   <div class="side-nav">
     <button class="side-item active" data-screen="sHome" onclick="goHome()">🏠 Aujourd'hui</button>
     <button class="side-item" data-screen="sSuivi" onclick="openSuivi()">📚 Suivi du semestre</button>
-    <button class="side-item" data-screen="sHome" onclick="goHome();setTimeout(function(){document.getElementById('foldersGrid').scrollIntoView({behavior:'smooth'})},80)">📖 Matières</button>
+    <button class="side-item" data-screen="sSubjects" onclick="openSubjects()">📖 Matières</button>
     <button class="side-item" data-screen="sCal" onclick="openCalendar()">🗓️ Planning</button>
-    <button class="side-item" data-screen="sHome" onclick="goHome()">🧠 Révisions</button>
+    <button class="side-item" data-screen="sReviews" onclick="openReviews()">🧠 Révisions</button>
     <button class="side-item" data-screen="sGlobalStats" onclick="openGlobalStats()">📊 Statistiques</button>
   </div>
   <div class="side-bottom side-nav">
@@ -447,9 +489,9 @@ body{-webkit-overflow-scrolling:touch}
 <div class="mobile-nav" id="mobileNav">
   <button data-screen="sHome" class="active" onclick="goHome()"><span>🏠</span>Accueil</button>
   <button data-screen="sSuivi" onclick="openSuivi()"><span>📚</span>Suivi</button>
-  <button data-screen="sHome" onclick="goHome();setTimeout(function(){document.getElementById('foldersGrid').scrollIntoView({behavior:'smooth'})},80)"><span>📖</span>Matières</button>
+  <button data-screen="sSubjects" onclick="openSubjects()"><span>📖</span>Matières</button>
+  <button data-screen="sReviews" onclick="openReviews()"><span>🧠</span>Réviser</button>
   <button data-screen="sCal" onclick="openCalendar()"><span>🗓️</span>Planning</button>
-  <button data-screen="sGlobalStats" onclick="openGlobalStats()"><span>•••</span>Plus</button>
 </div>
 
 <!-- ÉCRAN DE CONNEXION -->
@@ -477,23 +519,50 @@ body{-webkit-overflow-scrolling:touch}
 </div>
 
 <!-- ACCUEIL -->
-<div id="sHome" class="screen active">
-  <div class="home-h">
+<div id="sHome" class="screen active dashboard-screen">
+  <div class="home-h dashboard-heading">
     <div class="home-title">Bonjour ! 👋</div>
     <div class="home-sub" id="homeSub">Prêt pour une nouvelle journée de révisions ?</div>
   </div>
   <div class="home-dashboard" id="homeDashboard"></div>
-  <div id="todayPanel"></div>
-  <div class="home-two-col">
-    <div class="panel-card">
-      <div class="panel-head"><h3>📚 Mes matières</h3><button class="mini-link" onclick="openFolderModal()">+ Nouvelle matière</button></div>
-      <div class="grid4" id="foldersGrid"></div>
+  <div class="dashboard-main-grid">
+    <div class="panel-card dashboard-list-card">
+      <div class="panel-head"><h3>⚡ À réviser aujourd'hui</h3><button class="mini-link" onclick="openReviews()">Tout voir</button></div>
+      <div id="homeDueList" class="dashboard-list"></div>
     </div>
-    <div>
-      <div class="panel-card" id="semesterMini" style="margin-bottom:16px"></div>
-      <div class="panel-card" id="examMini"></div>
+    <div class="dashboard-side-stack">
+      <div class="panel-card start-compact dashboard-start-card" id="homePendingPanel"></div>
+      <div class="dashboard-bottom-grid">
+        <div class="panel-card" id="semesterMini"></div>
+        <div class="panel-card" id="examMini"></div>
+      </div>
     </div>
   </div>
+</div>
+
+<!-- MATIÈRES — espace dédié -->
+<div id="sSubjects" class="screen">
+  <div class="section-page-head">
+    <div>
+      <div class="home-title">Mes matières 📚</div>
+      <div class="home-sub">Toutes tes matières et leurs cours, dans un espace dédié</div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openFolderModal()">+ Nouvelle matière</button>
+  </div>
+  <div class="subjects-overview" id="subjectsOverview"></div>
+  <div class="grid4 subjects-grid" id="foldersGrid"></div>
+</div>
+
+<!-- RÉVISIONS — espace dédié -->
+<div id="sReviews" class="screen">
+  <div class="section-page-head">
+    <div>
+      <div class="home-title">Révisions 🧠</div>
+      <div class="home-sub">Tes échéances, tes J0 à démarrer et ce qui arrive ensuite</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="openCalendar()">🗓️ Voir le planning</button>
+  </div>
+  <div id="reviewsBody"></div>
 </div>
 
 <!-- SUIVI DU SEMESTRE -->
@@ -517,7 +586,7 @@ body{-webkit-overflow-scrolling:touch}
 <!-- MATIÈRE -->
 <div id="sFolder" class="screen">
   <div class="bc">
-    <span class="bc-link" onclick="goHome()">Accueil</span>
+    <span class="bc-link" onclick="openSubjects()">Matières</span>
     <span class="bc-sep">›</span><span id="bcFolder"></span>
   </div>
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;flex-wrap:wrap;gap:12px">
@@ -538,7 +607,7 @@ body{-webkit-overflow-scrolling:touch}
 <!-- COURS -->
 <div id="sDeck" class="screen">
   <div class="bc">
-    <span class="bc-link" onclick="goHome()">Accueil</span>
+    <span class="bc-link" onclick="openSubjects()">Matières</span>
     <span class="bc-sep">›</span>
     <span class="bc-link" id="bcDeckFolder" onclick="goFolder()"></span>
     <span class="bc-sep">›</span><span id="bcDeck"></span>
@@ -1234,12 +1303,17 @@ function applyTheme(){
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
   var target=document.getElementById(id);if(target)target.classList.add('active');
-  document.getElementById('btnBack').style.display=(id==='sHome'||id==='sSuivi'||id==='sGlobalStats')?'none':'block';
-  document.getElementById('btnAdd').style.display=(id==='sCal'||id==='sExam'||id==='sSuivi'||id==='sGlobalStats')?'none':'';
+  var main=['sHome','sSubjects','sReviews','sSuivi','sGlobalStats','sCal'];
+  document.getElementById('btnBack').style.display=main.indexOf(id)>=0?'none':'block';
+  document.getElementById('btnAdd').style.display=['sCal','sExam','sSuivi','sGlobalStats','sReviews','sLogin'].indexOf(id)>=0?'none':'';
+  if(id==='sSubjects')document.getElementById('btnAdd').textContent='+ Matière';
+  else if(id==='sHome')document.getElementById('btnAdd').textContent='+ Nouveau';
   document.querySelectorAll('[data-screen]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-screen')===id);});
-  window.scrollTo({top:0,behavior:'smooth'});
+  if(target)target.scrollTop=0;
 }
-function goHome(){CUR.folder=null;CUR.deck=null;document.getElementById('btnAdd').textContent='+ Nouveau';showScreen('sHome');renderHome();}
+function goHome(){CUR.folder=null;CUR.deck=null;showScreen('sHome');renderHome();}
+function openSubjects(){CUR.folder=null;CUR.deck=null;showScreen('sSubjects');renderSubjects();}
+function openReviews(){CUR.folder=null;CUR.deck=null;showScreen('sReviews');renderReviews();}
 function goFolder(){
   CUR.deck=null;
   if(!CUR.folder){goHome();return;}
@@ -1254,6 +1328,7 @@ function goBack(){
   if(cal)goHome();
   else if(exm)goFolder();
   else if(CUR.deck)goFolder();
+  else if(CUR.folder)openSubjects();
   else goHome();
 }
 function onAdd(){if(!CUR.folder&&!CUR.deck)openFolderModal();else if(CUR.folder&&!CUR.deck)openDeckModal();else openCardModal();}
@@ -1292,47 +1367,43 @@ function eventsOn(dateStr){
 // ════════════════════════════════════════
 function renderHome(){
   renderDashboard();
-  renderToday();
+  renderHomeToday();
   renderSemesterMini();
   renderExamMini();
-  var g=document.getElementById('foldersGrid');
+  renderSubjects(); // maintient aussi l'écran Matières à jour quand des données changent
+}
+
+function renderSubjects(){
+  var g=document.getElementById('foldersGrid');if(!g)return;
   g.innerHTML='';
-  var t=today();
+  var t=today(),totalCourses=0,totalCards=0,dueTotal=0,pendingTotal=0;
+  D.folders.forEach(function(f){
+    totalCourses+=(f.decks||[]).length;
+    totalCards+=(f.decks||[]).reduce(function(s,d){return s+(d.cards||[]).length;},0);
+    (f.decks||[]).forEach(function(d){
+      if(deckPending(d)){if((d.cards||[]).length)pendingTotal++;return;}
+      (d.plan||[]).forEach(function(e){if(!e.done&&e.date<=t)dueTotal++;});
+    });
+  });
+  var ov=document.getElementById('subjectsOverview');
+  if(ov)ov.innerHTML='<div class="subject-overview-kpi"><b>'+D.folders.length+'</b><span>matières</span></div>'+ 
+    '<div class="subject-overview-kpi"><b>'+totalCourses+'</b><span>cours</span></div>'+ 
+    '<div class="subject-overview-kpi"><b>'+totalCards+'</b><span>flashcards</span></div>'+ 
+    '<div class="subject-overview-kpi"><b>'+pendingTotal+'</b><span>cours à démarrer</span></div>';
   D.folders.forEach(function(f){
     var tc=(f.decks||[]).reduce(function(s,d){return s+(d.cards||[]).length;},0);
     var late=0,due=0;
     (f.decks||[]).forEach(function(d){
-      (deckPending(d)?[]:(d.plan||[])).forEach(function(e){
-        if(e.done)return;
-        if(e.date<t)late++;else if(e.date===t)due++;
-      });
+      (deckPending(d)?[]:(d.plan||[])).forEach(function(e){if(e.done)return;if(e.date<t)late++;else if(e.date===t)due++;});
     });
     var chip='';
-    if(f.examDate){
-      var dj=diffDays(t,f.examDate);
-      var cls=dj<=7?'urgent':dj<=21?'soon':'';
-      chip='<div class="exam-chip '+cls+'">🎯 '+(dj>0?'J-'+dj:dj===0?"Examen aujourd'hui":'Examen passé')+'</div>';
-    }
-    var badges='';
-    if(late)badges+='<span class="tag tag-late" style="margin-left:6px">'+late+' en retard</span>';
-    else if(due)badges+='<span class="tag tag-today" style="margin-left:6px">'+due+" aujourd'hui</span>";
-    var el=document.createElement('div');
-    el.className='folder-card';
-    el.style.setProperty('--fc',f.color);
-    el.innerHTML='<div class="f-acts">'+
-        '<div class="mini-btn" onclick="event.stopPropagation();editFolder(\''+f.id+'\')">✎</div>'+
-        '<div class="mini-btn dg" onclick="event.stopPropagation();delFolder(\''+f.id+'\')">✕</div></div>'+
-      '<div class="f-em">'+f.emoji+'</div>'+
-      '<div class="f-name">'+esc(f.name)+'</div>'+
-      '<div class="f-meta">'+(f.decks||[]).length+' cours · '+tc+' cartes'+badges+'</div>'+chip;
-    el.onclick=function(){openFolder(f.id);};
-    g.appendChild(el);
+    if(f.examDate){var dj=diffDays(t,f.examDate);var cls=dj<=7?'urgent':dj<=21?'soon':'';chip='<div class="exam-chip '+cls+'">🎯 '+(dj>0?'J-'+dj:dj===0?"Examen aujourd'hui":'Examen passé')+'</div>';}
+    var badges='';if(late)badges+='<span class="tag tag-late" style="margin-left:6px">'+late+' en retard</span>';else if(due)badges+='<span class="tag tag-today" style="margin-left:6px">'+due+" aujourd'hui</span>";
+    var el=document.createElement('div');el.className='folder-card';el.style.setProperty('--fc',f.color);
+    el.innerHTML='<div class="f-acts"><div class="mini-btn" onclick="event.stopPropagation();editFolder(\''+f.id+'\')">✎</div><div class="mini-btn dg" onclick="event.stopPropagation();delFolder(\''+f.id+'\')">✕</div></div><div class="f-em">'+f.emoji+'</div><div class="f-name">'+esc(f.name)+'</div><div class="f-meta">'+(f.decks||[]).length+' cours · '+tc+' cartes'+badges+'</div>'+chip;
+    el.onclick=function(){openFolder(f.id);};g.appendChild(el);
   });
-  var add=document.createElement('div');
-  add.className='add-card';
-  add.innerHTML='<div style="font-size:28px">+</div><div style="font-size:14px">Nouvelle matière</div>';
-  add.onclick=openFolderModal;
-  g.appendChild(add);
+  var add=document.createElement('div');add.className='add-card';add.innerHTML='<div style="font-size:28px">+</div><div style="font-size:14px">Nouvelle matière</div>';add.onclick=openFolderModal;g.appendChild(add);
 }
 
 function dashboardNumbers(){
@@ -1348,9 +1419,9 @@ function renderDashboard(){
   var box=document.getElementById('homeDashboard');if(!box)return;var n=dashboardNumbers();
   box.innerHTML='<div class="dash-kpi small"><div class="dk-icon">📖</div><div><div class="dk-n">'+n.dueCards+'</div><div class="dk-l">cartes à réviser aujourd\'hui<br>'+n.dueCourses+' cours</div></div></div>'+
     '<div class="dash-kpi small"><div class="dk-icon">🎯</div><div><div class="dk-n">'+n.rate+'%</div><div class="dk-l">taux de réussite<br>sur les dernières sessions</div></div></div>'+
-    '<div class="dash-kpi start" onclick="scrollToPending()"><div class="dk-icon">🚀</div><div class="dk-main"><div style="font-size:12px;color:var(--ac2);font-weight:700">Cours à démarrer</div><div class="dk-n" style="margin-top:4px">'+n.pending.length+' cours</div><div class="dk-l">Prêts à commencer · J0 à faire</div></div><div class="dash-arrow">›</div></div>';
+    '<div class="dash-kpi start" onclick="openReviews()"><div class="dk-icon">🚀</div><div class="dk-main"><div style="font-size:12px;color:var(--ac2);font-weight:700">Cours à démarrer</div><div class="dk-n" style="margin-top:4px">'+n.pending.length+' cours</div><div class="dk-l">Prêts à commencer · J0 à faire</div></div><div class="dash-arrow">›</div></div>';
 }
-function scrollToPending(){var el=document.getElementById('pendingPanelAnchor');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});}
+function scrollToPending(){openReviews();}
 function renderSemesterMini(){
   var el=document.getElementById('semesterMini');if(!el)return;
   var cache=null;try{cache=JSON.parse(localStorage.getItem('mf_suivi_cache')||'null')}catch(e){}
@@ -1381,6 +1452,28 @@ function pendingHtml(){
     }).join('')+
     '<div style="font-size:12px;color:var(--tx3);margin-top:10px">Aucun retard n\'est compté tant que le J0 n\'est pas fait. Le planning démarre le jour où tu valides ta première session.</div>'+
     '</div>';
+}
+
+function homeDueRow(x){
+  var t=today(),late=diffDays(x.entry.date,t);var tag=late>0?'<span class="tag tag-late">🔴 '+late+'j</span>':'<span class="tag tag-today">J'+x.entry.off+'</span>';
+  return '<div class="today-row" onclick="jumpTo(\''+x.folder.id+'\',\''+x.deck.id+'\')"><div class="tr-dot" style="background:'+x.folder.color+'"></div><div class="tr-main"><div class="tr-t">'+esc(x.deck.name)+'</div><div class="tr-s">'+x.folder.emoji+' '+esc(x.folder.name)+' · '+(x.deck.cards||[]).length+' cartes</div></div>'+tag+'</div>';
+}
+function renderHomeToday(){
+  var due=allDue().filter(function(x){return x.entry.date<=today();});
+  var list=document.getElementById('homeDueList');if(list)list.innerHTML=due.length?due.slice(0,4).map(homeDueRow).join('')+'<button class="mini-link" style="align-self:flex-end;margin-top:4px" onclick="openReviews()">'+(due.length>4?'+ '+(due.length-4)+' autres · ':'')+'ouvrir les révisions →</button>':'<div class="dashboard-empty">✓ Rien à réviser aujourd\'hui</div>';
+  var pending=[];D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){if(deckPending(d)&&(d.cards||[]).length)pending.push({folder:f,deck:d});});});
+  var box=document.getElementById('homePendingPanel');if(box){box.innerHTML='<div class="panel-head"><h3>🚀 À démarrer <span class="tag tag-soon" style="margin-left:6px">'+pending.length+'</span></h3><button class="mini-link" onclick="openReviews()">Tout voir</button></div>'+ (pending.length?pending.slice(0,3).map(function(x){return '<div class="today-row" style="margin-bottom:7px" onclick="jumpTo(\''+x.folder.id+'\',\''+x.deck.id+'\')"><div class="tr-dot" style="background:'+x.folder.color+'"></div><div class="tr-main"><div class="tr-t">'+esc(x.deck.name)+'</div><div class="tr-s">'+x.folder.emoji+' '+esc(x.folder.name)+'</div></div><span class="tag tag-soon">J0</span></div>';}).join(''):'<div class="dashboard-empty">Aucun J0 en attente</div>');}
+  var sub=document.getElementById('homeSub');if(sub)sub.textContent=due.length?(due.length+' révision'+(due.length>1?'s':'')+' à faire aujourd\'hui'):'Rien à réviser aujourd\'hui';
+}
+function renderReviews(){
+  var body=document.getElementById('reviewsBody');if(!body)return;var t=today();
+  var due=allDue().filter(function(x){return x.entry.date<=t;});
+  var future=allDue().filter(function(x){return x.entry.date>t;}).slice(0,12);
+  var pending=[];D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){if(deckPending(d)&&(d.cards||[]).length)pending.push({folder:f,deck:d});});});
+  var dueHtml=due.length?due.map(homeDueRow).join(''):'<div class="empty-soft">✓ Rien à réviser aujourd\'hui.</div>';
+  var pendHtml=pending.length?pending.map(function(x){return '<div class="today-row" onclick="jumpTo(\''+x.folder.id+'\',\''+x.deck.id+'\')"><div class="tr-dot" style="background:'+x.folder.color+'"></div><div class="tr-main"><div class="tr-t">'+esc(x.deck.name)+'</div><div class="tr-s">'+x.folder.emoji+' '+esc(x.folder.name)+' · '+(x.deck.cards||[]).length+' cartes prêtes</div></div><span class="tag tag-soon">J0 à faire</span></div>';}).join(''):'<div class="empty-soft">Aucun cours à démarrer.</div>';
+  var futHtml=future.length?future.map(function(x){return '<div class="today-row" onclick="jumpTo(\''+x.folder.id+'\',\''+x.deck.id+'\')"><div class="tr-dot" style="background:'+x.folder.color+'"></div><div class="tr-main"><div class="tr-t">'+esc(x.deck.name)+'</div><div class="tr-s">'+x.folder.emoji+' '+esc(x.folder.name)+' · J'+x.entry.off+'</div></div><span class="tag tag-soon">'+prettyD(x.entry.date)+'</span></div>';}).join(''):'<div class="empty-soft">Aucune échéance à venir.</div>';
+  body.innerHTML='<div class="review-columns"><div><div class="review-section"><div class="sec-title">⚡ À réviser maintenant <span class="tag tag-today">'+due.length+'</span></div>'+dueHtml+'</div><div class="review-section start-compact"><div class="sec-title">🚀 À démarrer <span class="tag tag-soon">'+pending.length+'</span></div>'+pendHtml+'<div style="font-size:12px;color:var(--tx3);margin-top:10px">Le planning d\'un cours démarre seulement quand tu valides son J0.</div></div></div><div><div class="review-section"><div class="sec-title">🗓️ Prochaines échéances</div><div class="review-upcoming">'+futHtml+'</div></div></div></div>';
 }
 
 function renderToday(){
@@ -3719,7 +3812,7 @@ setPersistence(auth, browserLocalPersistence).catch(function(e){ console.warn('P
 // ════════════════════════════════════════
 // Clé VAPID à récupérer dans la console Firebase :
 // Project Settings -> Cloud Messaging -> Web Push certificates -> "Generate key pair"
-const VAPID_KEY = "BG2yuuxT9nFRe2gk5UiyF6apu17dq8r3q2m6QCX8tdsG4FdhdYMAqn62RIOuEn0IrPZGLDfKKolYeEvKc5pM6bI";
+const VAPID_KEY = "COLLE_TA_CLE_VAPID_ICI";
 let messaging = null;
 try { messaging = getMessaging(app); } catch(e){ console.warn('FCM indisponible sur cet appareil', e); }
 

@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v11-2026-10-07">
+<meta name="app-build" content="v11.1-2026-10-07-1812">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -399,7 +399,7 @@ body{-webkit-overflow-scrolling:touch}
   .home-dashboard{grid-template-columns:repeat(2,minmax(0,1fr))}.dash-kpi.small{grid-column:span 1}.dash-kpi.start{grid-column:1/-1}.home-two-col{grid-template-columns:1fr}.suivi-summary,.global-stats-grid{grid-template-columns:repeat(2,1fr)}.stats-two{grid-template-columns:1fr}
 }
 @media(max-width:640px){
-  body{padding-bottom:74px}.mobile-nav{display:grid;position:fixed;left:0;right:0;bottom:0;z-index:130;grid-template-columns:repeat(5,1fr);background:rgba(15,17,23,.94);border-top:1px solid var(--bd);backdrop-filter:blur(18px);padding:5px 4px calc(5px + env(safe-area-inset-bottom))}.light .mobile-nav{background:rgba(255,255,255,.94)}.mobile-nav button{border:0;background:transparent;color:var(--tx2);font:500 10px 'DM Sans',sans-serif;padding:5px 2px;border-radius:9px}.mobile-nav button span{display:block;font-size:19px;margin-bottom:1px}.mobile-nav button.active{color:var(--ac)}
+  body{padding-bottom:74px}.mobile-nav{display:grid;position:fixed;left:0;right:0;bottom:0;z-index:130;grid-template-columns:repeat(6,1fr);background:rgba(15,17,23,.94);border-top:1px solid var(--bd);backdrop-filter:blur(18px);padding:5px 4px calc(5px + env(safe-area-inset-bottom))}.light .mobile-nav{background:rgba(255,255,255,.94)}.mobile-nav button{border:0;background:transparent;color:var(--tx2);font:500 10px 'DM Sans',sans-serif;padding:5px 2px;border-radius:9px}.mobile-nav button span{display:block;font-size:19px;margin-bottom:1px}.mobile-nav button.active{color:var(--ac)}
   .home-dashboard{gap:9px}.dash-kpi{padding:12px;min-height:88px;border-radius:15px}.dash-kpi .dk-icon{width:38px;height:38px;font-size:20px}.dash-kpi .dk-n{font-size:21px}.dash-kpi .dk-l{font-size:10px}.home-two-col{gap:12px}.suivi-summary,.global-stats-grid{grid-template-columns:repeat(2,1fr)}
   nav .nav-r .theme-btn:nth-of-type(1){display:none}
 }
@@ -446,6 +446,17 @@ body{-webkit-overflow-scrolling:touch}
 }
 @media(max-width:640px){.dashboard-bottom-grid{grid-template-columns:1fr}.subjects-overview{grid-template-columns:repeat(2,1fr)}}
 
+
+/* v11.2 */
+body.logged-out{padding:0!important;overflow:auto!important}
+body.logged-out .app-sidebar,body.logged-out .mobile-nav,body.logged-out nav{display:none!important}
+body.logged-out #sLogin{position:static!important;top:auto!important}
+.week-event.fac-cm{background:rgba(59,130,246,.13);border-color:rgba(59,130,246,.3)}
+.week-event.fac-ed{background:rgba(16,185,129,.13);border-color:rgba(16,185,129,.3)}
+.week-event.fac-tp{background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.32)}
+.week-event.fac-exam{background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.35)}
+.fac-ev{cursor:default}.week-event[class*="fac-"]{cursor:default;font-size:10.5px}
+@media(min-width:900px){.dashboard-screen.active{overflow:auto!important}.dashboard-main-grid{overflow:visible!important;min-height:300px}.dashboard-list{max-height:340px}}
 </style>
 </head>
 <body>
@@ -492,6 +503,7 @@ body{-webkit-overflow-scrolling:touch}
   <button data-screen="sSubjects" onclick="openSubjects()"><span>📖</span>Matières</button>
   <button data-screen="sReviews" onclick="openReviews()"><span>🧠</span>Réviser</button>
   <button data-screen="sCal" onclick="openCalendar()"><span>🗓️</span>Planning</button>
+  <button data-screen="sGlobalStats" onclick="openGlobalStats()"><span>📊</span>Stats</button>
 </div>
 
 <!-- ÉCRAN DE CONNEXION -->
@@ -519,7 +531,7 @@ body{-webkit-overflow-scrolling:touch}
 </div>
 
 <!-- ACCUEIL -->
-<div id="sHome" class="screen active dashboard-screen">
+<div id="sHome" class="screen dashboard-screen">
   <div class="home-h dashboard-heading">
     <div class="home-title">Bonjour ! 👋</div>
     <div class="home-sub" id="homeSub">Prêt pour une nouvelle journée de révisions ?</div>
@@ -710,6 +722,7 @@ body{-webkit-overflow-scrolling:touch}
       <button id="calSegW" onclick="setCalView('week')">🗓️ Semaine</button>
       <button id="calSegA" onclick="setCalView('agenda')">📋 Agenda</button>
     </div>
+    <label class="btn btn-ghost btn-sm" style="cursor:pointer" title="Importer un emploi du temps .ics">📥 EDT fac<input type="file" accept=".ics,text/calendar" style="display:none" onchange="importICS(this)"></label>
   </div>
   <div id="calBody"></div>
 </div>
@@ -910,7 +923,7 @@ Q: ...</div>
 // ════════════════════════════════════════
 // DATA & STATE
 // ════════════════════════════════════════
-var D={folders:[],progress:{},examProgress:{}};
+var D={folders:[],progress:{},examProgress:{},settings:{}};
 var CUR={folder:null,deck:null};
 
 // ════════════════════════════════════════
@@ -1006,7 +1019,7 @@ var TH_GOOD=75, TH_BAD=40;
 // ════════════════════════════════════════
 function dbSave(){try{localStorage.setItem('mf3',JSON.stringify(D));localStorage.setItem('mf3_ts',String(Date.now()));}catch(e){}}
 window.dbSave=dbSave;
-function dbLoad(){try{var r=localStorage.getItem('mf3');if(r){var p=JSON.parse(r);D.folders=p.folders||[];D.progress=p.progress||{};D.examProgress=p.examProgress||{};}}catch(e){}}
+function dbLoad(){try{var r=localStorage.getItem('mf3');if(r){var p=JSON.parse(r);D.folders=p.folders||[];D.progress=p.progress||{};D.examProgress=p.examProgress||{};D.settings=p.settings||D.settings||{};}}catch(e){}}
 
 // ════════════════════════════════════════
 // DATES (tout en 'YYYY-MM-DD' local)
@@ -1016,6 +1029,7 @@ function dStr(d){
   return y+'-'+m+'-'+j;
 }
 function today(){return dStr(new Date());}
+function toDateStr(d){return dStr(d);}
 function parseD(s){if(!s)return null;var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2]);}
 function addDays(s,n){var d=parseD(s);d.setDate(d.getDate()+n);return dStr(d);}
 function diffDays(a,b){ // b - a en jours
@@ -3076,15 +3090,75 @@ function regenCurrentPlan(){
 // ════════════════════════════════════════
 // SUIVI DU SEMESTRE (passerelle Apps Script)
 // ════════════════════════════════════════
-function openSuivi(){showScreen('sSuivi');renderSuivi();}
-function suiviCache(){try{return JSON.parse(localStorage.getItem('mf_suivi_cache')||'null')}catch(e){return null}}
-function renderSuivi(){
-  var el=document.getElementById('suiviBody');if(!el)return;var d=suiviCache();
-  if(!d||!d.subj){el.innerHTML='<div class="empty-soft"><div style="font-size:34px;margin-bottom:10px">🔗</div><div style="font-family:Syne,sans-serif;font-weight:700;margin-bottom:6px">Passerelle Suivi MED2 prête à être reliée</div><div style="font-size:13px;line-height:1.65">L\'interface MedFlash est prête. Il reste à connecter l\'endpoint Apps Script pour récupérer automatiquement les cours faits à la fac, les nouvelles ronéos et les statuts appris, sans stocker les PDF dans Firebase.</div></div>';return;}
-  var S=d.subj,all=[];S.forEach(function(o){(o.cs||[]).forEach(function(c){all.push(c);});});var a=all.filter(function(c){return c.st==='appris';}).length,dis=all.filter(function(c){return c.st==='dispo'||c.st==='appris';}).length,fac=all.filter(function(c){return c.st!=='prevu';}).length,total=all.length;
-  el.innerHTML='<div class="suivi-summary"><div class="suivi-stat"><b>'+a+' / '+total+'</b><span>cours appris</span></div><div class="suivi-stat"><b>'+dis+'</b><span>ronéos disponibles</span></div><div class="suivi-stat"><b>'+fac+'</b><span>faits à la fac</span></div><div class="suivi-stat"><b>'+Math.max(0,dis-a)+'</b><span>à apprendre</span></div></div>'+
-    '<div class="panel-card"><div class="panel-head"><h3>Progression par matière</h3></div><div class="suivi-list">'+S.map(function(o){var t=(o.cs||[]).length,aa=(o.cs||[]).filter(function(c){return c.st==='appris';}).length,p=t?Math.round(aa/t*100):0;return '<div class="suivi-row"><div style="font-size:23px">'+(o.e||'📘')+'</div><div class="sr-main"><div class="sr-title">'+esc(o.n)+'</div><div class="sr-sub">'+aa+' / '+t+' appris · '+((o.cs||[]).filter(function(c){return c.st==='dispo';}).length)+' à apprendre</div><div class="gauge-bar" style="margin-top:7px"><div class="gauge-fill g-gr" style="width:'+p+'%"></div></div></div><span style="font-size:12px;color:var(--tx2)">'+p+'%</span></div>';}).join('')+'</div></div>';
+function openSuivi(){showScreen('sSuivi');renderSuivi();var c=suiviCache();if(suiviCfg().url&&(!c||Date.now()-(c.ts||0)>600000))syncSuivi(true);}
+function suiviCache(){try{return JSON.parse(localStorage.getItem('mf_suivi_cache')||'null');}catch(e){return null;}}
+function suiviCfg(){return (D.settings&&D.settings.suivi)||{};}
+function suiviSummary(S){
+  var t=0,a=0,av=0,f=0;
+  S.forEach(function(o){(o.cs||[]).forEach(function(c){t++;if(c.st==='appris')a++;if(c.st==='appris'||c.st==='dispo')av++;if(c.st!=='prevu')f++;});});
+  return {total:t,learned:a,available:av,doneFac:f};
 }
+function syncSuivi(silent){
+  var cfg=suiviCfg();
+  if(!cfg.url){if(!silent)toast('Renseigne d\'abord le lien du Suivi');return Promise.resolve();}
+  var u=cfg.url+(cfg.url.indexOf('?')>=0?'&':'?')+'k='+encodeURIComponent(cfg.key||'')+'&json=1';
+  if(!silent)toast('Synchronisation du suivi…');
+  return fetch(u,{redirect:'follow'}).then(function(r){return r.json();}).then(function(d){
+    if(!d||d.error||!d.subj)throw new Error((d&&d.error)||'Réponse invalide');
+    localStorage.setItem('mf_suivi_cache',JSON.stringify({ts:Date.now(),subj:d.subj,agenda:d.agenda||[],hier:d.hier||[],summary:suiviSummary(d.subj)}));
+    if(!silent)toast('Suivi à jour ✓');
+    renderSuivi();renderSemesterMini();
+  }).catch(function(e){
+    console.error(e);
+    if(!silent)toast('Suivi inaccessible — vérifie le lien /exec, la clé et le déploiement (accès : Tout le monde)');
+  });
+}
+function saveSuiviCfg(){
+  var url=document.getElementById('sv_url').value.trim(),key=document.getElementById('sv_key').value.trim();
+  if(!url){toast('Colle le lien de l\'appli');return;}
+  var m=url.match(/[?&]k=([^&]+)/);
+  if(m&&!key)key=decodeURIComponent(m[1]);
+  url=url.split('?')[0];
+  if(!D.settings)D.settings={};
+  D.settings.suivi={url:url,key:key};
+  dbSave();syncSuivi(false);
+}
+function renderSuivi(){
+  var el=document.getElementById('suiviBody');if(!el)return;
+  var d=suiviCache(),cfg=suiviCfg();
+  var head='<div class="panel-card" style="margin-bottom:16px"><div class="panel-head"><h3>🔗 Connexion au Suivi MED2</h3>'+(cfg.url?'<button class="btn btn-ghost btn-sm" onclick="syncSuivi(false)">🔄 Actualiser</button>':'')+'</div>'+
+    (cfg.url&&d&&d.ts?'<div style="font-size:12px;color:var(--tx2);margin-bottom:8px">Dernière synchro '+progAgoTxt(d.ts)+'</div>':'')+
+    '<details'+(cfg.url?'':' open')+'><summary style="cursor:pointer;font-size:13px;color:var(--ac)">'+(cfg.url?'Modifier la connexion':'Configurer la connexion')+'</summary>'+
+    '<div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">'+
+    '<input class="finp" id="sv_url" placeholder="Lien /exec de ton appli Apps Script" value="'+esc(cfg.url||'')+'">'+
+    '<input class="finp" id="sv_key" placeholder="Clé de lecture (VIEW)" value="'+esc(cfg.key||'')+'">'+
+    '<button class="btn btn-primary btn-sm" style="align-self:flex-start" onclick="saveSuiviCfg()">Enregistrer et synchroniser</button>'+
+    '<div style="font-size:12px;color:var(--tx3)">Colle le lien « PAPA (lecture seule) » donné par liens() : l\'URL et la clé sont séparées automatiquement.</div></div></details></div>';
+  if(!d||!d.subj){el.innerHTML=head+'<div class="empty-soft">Pas encore de données — configure la connexion ci-dessus.</div>';return;}
+  var S=d.subj,sm=suiviSummary(S);
+  var IC={appris:'✅',dispo:'📄',fait:'🕐',prevu:'🔒'};
+  var LB={appris:'Appris',dispo:'Ronéo dispo',fait:'Fait à la fac · ronéo pas encore dispo',prevu:'Prévu'};
+  var fd=function(s){return s?s.slice(8)+'/'+s.slice(5,7):'';};
+  var link=function(c){return c.files&&c.files.length?'<a href="'+esc(c.files[0].u)+'" target="_blank" rel="noopener" style="color:var(--ac);font-size:12px;white-space:nowrap">ouvrir ↗</a>':'';};
+  var learn=[];
+  S.forEach(function(o){(o.cs||[]).forEach(function(c){if(c.st==='dispo')learn.push({o:o,c:c});});});
+  var stats='<div class="suivi-summary">'+
+    '<div class="suivi-stat"><b>'+sm.learned+' / '+sm.total+'</b><span>cours appris</span></div>'+
+    '<div class="suivi-stat"><b>'+sm.available+'</b><span>ronéos disponibles</span></div>'+
+    '<div class="suivi-stat"><b>'+sm.doneFac+'</b><span>faits à la fac</span></div>'+
+    '<div class="suivi-stat"><b>'+learn.length+'</b><span>à apprendre</span></div></div>';
+  var ag=(d.agenda||[]).length?'<div class="panel-card" style="margin-bottom:16px"><div class="panel-head"><h3>📅 Aujourd\'hui à la fac</h3></div><div class="suivi-list">'+
+    d.agenda.map(function(c){return '<div class="suivi-row"><span>'+(IC[c.st]||'📘')+'</span><div class="sr-main"><div class="sr-title">'+esc(c.t)+'</div><div class="sr-sub">'+esc(c.sn)+'</div></div></div>';}).join('')+'</div></div>':'';
+  var lp='<div class="panel-card" style="margin-bottom:16px"><div class="panel-head"><h3>📄 À apprendre <span class="tag tag-soon" style="margin-left:6px">'+learn.length+'</span></h3></div>'+
+    (learn.length?'<div class="suivi-list">'+learn.slice(0,20).map(function(x){return '<div class="suivi-row"><span style="font-size:20px">'+(x.o.e||'📘')+'</span><div class="sr-main"><div class="sr-title">'+esc(x.c.t)+'</div><div class="sr-sub">'+esc(x.o.n)+' · fait à la fac le '+fd(x.c.d)+'</div></div>'+link(x.c)+'</div>';}).join('')+(learn.length>20?'<div style="font-size:12px;color:var(--tx3);padding:6px">+ '+(learn.length-20)+' autres</div>':'')+'</div>':'<div class="dashboard-empty">✓ Tout ce qui est disponible est appris</div>')+'</div>';
+  var subj='<div class="panel-head" style="margin-top:6px"><h3>Progression par matière</h3></div>'+S.map(function(o){
+    var cs=o.cs||[],a=cs.filter(function(c){return c.st==='appris';}).length,p=cs.length?Math.round(a/cs.length*100):0;
+    return '<details class="panel-card" style="margin-bottom:8px;padding:12px 14px"><summary style="cursor:pointer;display:flex;align-items:center;gap:10px;list-style:none"><span style="font-size:22px">'+(o.e||'📘')+'</span><div style="flex:1;min-width:0"><div class="sr-title">'+esc(o.n)+'</div><div class="sr-sub">'+a+' / '+cs.length+' appris · examen '+esc(o.xl||'')+'</div><div class="gauge-bar" style="margin-top:6px"><div class="gauge-fill g-gr" style="width:'+p+'%"></div></div></div><span style="font-size:12px;color:var(--tx2)">'+p+'%</span></summary><div style="margin-top:10px">'+
+      cs.map(function(c){return '<div class="subject-progress-row"><span>'+(IC[c.st]||'•')+'</span><div class="sp-name" style="font-weight:500">'+esc(c.t)+'<div style="font-size:11px;color:var(--tx3);font-weight:400">'+(LB[c.st]||'')+' · '+fd(c.d)+'</div></div>'+link(c)+'</div>';}).join('')+'</div></details>';
+  }).join('');
+  el.innerHTML=head+stats+ag+lp+subj;
+}
+
 
 function openGlobalStats(){showScreen('sGlobalStats');renderGlobalStats();}
 function renderGlobalStats(){
@@ -3179,30 +3253,76 @@ function renderCalMonth(){
   document.getElementById('calBody').innerHTML=h;
 }
 
+// ════════════════════════════════════════
+// EMPLOI DU TEMPS DE LA FAC (import .ics) — stocké dans D.settings.fac (synchronisé)
+// ════════════════════════════════════════
+var FAC_DEFAULT=[["ED Anglais","2026-09-18","15:15","16:45"],["CM BMCT","2026-09-21","08:00","11:00"],["CM Immunologie","2026-09-21","11:00","13:00"],["CM BMCP","2026-09-22","08:00","12:00"],["CM BMCP","2026-09-23","08:00","12:00"],["CM Immunologie","2026-09-25","09:00","11:00"],["ED Anglais","2026-09-25","15:15","16:45"],["CM BMCT","2026-09-28","08:00","11:00"],["CM Anatomie","2026-09-29","10:00","12:00"],["CM BMCP","2026-09-30","08:00","12:00"],["ED Biochimie","2026-09-30","13:30","15:00"],["CM BMCP","2026-10-02","08:00","10:00"],["CM Immunologie","2026-10-02","10:00","12:00"],["ED Anglais","2026-10-02","15:15","16:45"],["CM BMCT","2026-10-05","08:00","12:00"],["CM Biomedecine quantitative","2026-10-06","08:00","10:00"],["CM Immunologie","2026-10-09","08:00","09:00"],["CM Biomedecine quantitative","2026-10-09","09:00","11:00"],["ED Anglais","2026-10-09","15:15","16:45"],["CM BMCT","2026-10-12","08:00","11:00"],["CM Immunologie","2026-10-12","11:00","13:00"],["CM Anatomie","2026-10-13","08:00","10:00"],["CM Immunologie","2026-10-14","12:00","13:00"],["ED Biochimie","2026-10-14","13:30","15:00"],["CM BMCT","2026-10-16","08:00","11:00"],["CM Immunologie","2026-10-16","11:00","12:00"],["ED Anglais","2026-10-16","15:15","16:45"],["CM Informatique medicale","2026-10-19","08:00","10:00"],["CM Biomedecine quantitative","2026-10-20","08:00","10:00"],["CM Informatique medicale","2026-10-21","10:00","12:00"],["ED Anglais","2026-10-23","15:15","16:45"],["CM BMCP","2026-10-26","08:00","12:00"],["CM BMCP","2026-10-27","08:00","12:00"],["CM Immunologie","2026-10-28","08:00","10:00"],["CM BMCP","2026-10-28","10:00","11:00"],["ED Biochimie","2026-10-28","13:30","15:00"],["CM Biomedecine quantitative","2026-10-30","08:00","10:00"],["CM Informatique medicale","2026-10-30","10:00","12:00"],["Examen Séméiologie générale","2026-11-04","09:00","09:50"],["Examen Tissu sanguin","2026-11-04","09:50","10:50"],["Examen Système immunitaire","2026-11-04","14:00","15:00"],["Examen BMCT","2026-11-04","15:00","16:30"],["CM Biomedecine quantitative","2026-11-09","08:00","10:00"],["CM BMCP","2026-11-09","10:00","12:00"],["CM Genetique","2026-11-10","08:00","12:00"],["CM Biomedecine quantitative","2026-11-12","08:00","10:00"],["CM Biomedecine quantitative","2026-11-13","08:00","10:00"],["CM Informatique medicale","2026-11-13","10:00","12:00"],["ED Anglais","2026-11-13","15:15","16:45"],["CM BMCP","2026-11-16","10:00","12:00"],["ED Biologie cellulaire (groupe 16)","2026-11-16","13:30","15:00"],["TP Dissection (groupe 16)","2026-11-16","16:15","19:15"],["CM Genetique","2026-11-17","08:00","11:30"],["CM BMCP","2026-11-20","10:00","12:00"],["ED Anglais","2026-11-20","15:15","16:45"],["CM Informatique medicale","2026-11-23","08:00","10:00"],["CM Genetique","2026-11-23","10:00","12:00"],["TP Dissection (groupe 16)","2026-11-23","16:15","19:15"],["CM Informatique medicale","2026-11-24","09:30","11:30"],["CM Biomedecine quantitative","2026-11-27","08:00","11:00"],["ED Anglais","2026-11-27","15:15","16:45"],["ED Biologie cellulaire (groupe 16)","2026-11-30","13:30","15:00"],["CM BMCP","2026-12-01","08:00","10:00"],["CM BMCP","2026-12-04","08:00","11:00"],["ED Anglais","2026-12-04","15:15","16:45"],["Examen Anglais","2026-12-16","09:00","09:45"],["Examen Informatique médicale","2026-12-16","09:45","10:15"],["Examen Génétique médicale","2026-12-16","10:15","11:00"],["Examen Biomédecine quantitative","2026-12-16","14:00","15:00"],["Examen Anatomie - 1ère partie","2026-12-16","15:10","15:40"],["Examen BMCP","2027-01-05","09:00","11:00"],["Examen Virologie","2027-01-05","14:00","15:00"],["Examen Parasitologie-mycologie","2027-01-05","15:00","15:45"],["Examen SSH","2027-01-06","09:00","10:30"]];
+function facEvents(){var f=D.settings&&D.settings.fac;return (f&&f.length)?f:FAC_DEFAULT;}
+function facOn(ds){return facEvents().filter(function(e){return e[1]===ds;}).sort(function(a,b){return a[2]<b[2]?-1:a[2]>b[2]?1:0;});}
+function facKind(t){return /^Examen/i.test(t)?'exam':/^TP/i.test(t)?'tp':/^ED/i.test(t)?'ed':'cm';}
+function facEvHtml(e){return '<div class="week-event fac-'+facKind(e[0])+'" title="'+esc(e[0])+' '+e[2]+'–'+e[3]+'"><b>'+e[2]+'</b>–'+e[3]+' '+esc(e[0])+'</div>';}
+function parseICS(txt){
+  txt=txt.replace(/\r?\n[ \t]/g,'');
+  var now=new Date(),yr=now.getMonth()>=7?now.getFullYear():now.getFullYear()-1;
+  var minD=yr+'-08-01',out=[],seen={};
+  txt.split('BEGIN:VEVENT').slice(1).forEach(function(b){
+    b=b.split('END:VEVENT')[0];
+    var g=function(k){var m=b.match(new RegExp('^'+k+'[^:\\n]*:(.*)$','m'));return m?m[1].trim().replace(/\\,/g,',').replace(/\\;/g,';'):'';};
+    var s=g('DTSTART'),e=g('DTEND'),t=g('SUMMARY');
+    var m=s.match(/^(\d{4})(\d\d)(\d\d)T(\d\d)(\d\d)/);
+    if(!m||!t)return;
+    var ds=m[1]+'-'+m[2]+'-'+m[3],st=m[4]+':'+m[5],me=e.match(/T(\d\d)(\d\d)/),en=me?me[1]+':'+me[2]:st;
+    if(/Z$/.test(s)){var dt=new Date(Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5]));ds=dStr(dt);st=String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');en=st;}
+    if(ds<minD)return;
+    var k=ds+st+t;if(seen[k])return;seen[k]=1;
+    out.push([t,ds,st,en]);
+  });
+  out.sort(function(a,b){return (a[1]+a[2])<(b[1]+b[2])?-1:1;});
+  return out;
+}
+function importICS(inp){
+  var f=inp.files&&inp.files[0];if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    var ev=parseICS(String(r.result));
+    if(!ev.length){toast('Aucun événement reconnu dans ce fichier');inp.value='';return;}
+    if(!D.settings)D.settings={};
+    D.settings.fac=ev;dbSave();
+    toast(ev.length+' événements de la fac importés ✓');
+    renderCal();inp.value='';
+  };
+  r.readAsText(f);
+}
 function renderCalWeek(){
   var b=document.getElementById('calBody');
   var d=new Date(CAL.ref),day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);
   var days=[];for(var i=0;i<7;i++){var x=new Date(d);x.setDate(d.getDate()+i);days.push(x);}
-  var names=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  var names=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'],t=today();
   var h='<div class="week-grid"><div class="week-cell week-head"></div>';
-  days.forEach(function(x,i){h+='<div class="week-cell week-head">'+names[i]+'<br>'+x.getDate()+'</div>';});
-  var hours=[8,10,12,14,16,18,20];
-  hours.forEach(function(hr){
+  days.forEach(function(x,i){h+='<div class="week-cell week-head"'+(toDateStr(x)===t?' style="color:var(--ac)"':'')+'>'+names[i]+'<br>'+x.getDate()+'</div>';});
+  // ligne des révisions MedFlash + examens
+  h+='<div class="week-cell week-time" title="Révisions">🧠</div>';
+  days.forEach(function(x){
+    var ds=toDateStr(x),evs=eventsOn(ds),exams=D.folders.filter(function(f){return f.examDate===ds;});
+    h+='<div class="week-cell">';
+    exams.forEach(function(f){h+='<div class="week-event exam" onclick="openDay(\''+ds+'\')">🎓 '+esc(f.name)+'</div>';});
+    evs.forEach(function(e){h+='<div class="week-event" style="border-left:3px solid '+e.folder.color+(e.entry.done?';opacity:.5':'')+'" onclick="jumpTo(\''+e.folder.id+'\',\''+e.deck.id+'\')">'+esc(e.deck.name)+' · J'+e.entry.off+'</div>';});
+    h+='</div>';
+  });
+  for(var hr=8;hr<=19;hr++){
     h+='<div class="week-cell week-time">'+hr+'h</div>';
     days.forEach(function(x){
-      var ds=toDateStr(x),evs=eventsOn(ds),exams=D.folders.filter(function(f){return f.examDate===ds;});
+      var ds=toDateStr(x);
       h+='<div class="week-cell">';
-      if(hr===8){
-        exams.forEach(function(f){h+="<div class=\"week-event exam\" onclick=\"openDay('"+ds+"')\">🎓 "+esc(f.name)+"</div>";});
-        evs.forEach(function(e){h+="<div class=\"week-event\" style=\"border-left:3px solid "+e.folder.color+"\" onclick=\"jumpTo('"+e.folder.id+"','"+e.deck.id+"')\">"+esc(e.deck.name)+" · J"+e.entry.off+"</div>";});
-      }
+      facOn(ds).filter(function(e){return Math.max(8,Math.min(19,parseInt(e[2],10)))===hr;}).forEach(function(e){h+=facEvHtml(e);});
       h+='</div>';
     });
-  });
-  h+='</div>';b.innerHTML=h;
-  var m=document.getElementById('calMonth');
-  m.textContent='Semaine du '+days[0].getDate()+' au '+days[6].getDate()+' '+days[6].toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  }
+  h+='</div>';
+  b.innerHTML=h;
+  document.getElementById('calMonth').textContent='Semaine du '+days[0].getDate()+' au '+days[6].getDate()+' '+days[6].toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
 }
+
 
 function renderCalAgenda(){
   var t=today();
@@ -3220,7 +3340,8 @@ function renderCalAgenda(){
     var ds=addDays(t,i);
     var evs=eventsOn(ds);
     var exams=D.folders.filter(function(f){return f.examDate===ds;});
-    if(!evs.length&&!exams.length)continue;
+    var fac=facOn(ds);
+    if(!evs.length&&!exams.length&&!fac.length)continue;
     h+='<div class="agenda-day"><div class="agenda-h"><div class="agenda-date">'+
       (i===0?"Aujourd'hui · ":i===1?'Demain · ':'')+prettyDLong(ds)+'</div>'+
       (evs.filter(function(e){return !e.entry.done;}).length?'<span class="tag tag-soon">'+evs.filter(function(e){return !e.entry.done;}).length+' à faire</span>':'')+'</div>';
@@ -3229,7 +3350,7 @@ function renderCalAgenda(){
         '<div style="font-size:18px">🎯</div><div class="tr-main"><div class="tr-t">EXAMEN — '+esc(f.name)+'</div>'+
         '<div class="tr-s">Jour J</div></div></div>';
     });
-    h+=evs.map(function(x){return agendaItem(x,false);}).join('')+'</div>';
+    h+=fac.map(function(e){return '<div class="agenda-item"><div style="font-size:18px">🏫</div><div class="tr-main"><div class="tr-t">'+esc(e[0])+'</div><div class="tr-s">'+e[2]+' – '+e[3]+'</div></div></div>';}).join('')+evs.map(function(x){return agendaItem(x,false);}).join('')+'</div>';
   }
   if(!h)h='<div class="empty"><div class="empty-i">🗓️</div><div class="empty-t">Rien de prévu</div><div class="empty-s">Crée des cours pour générer ton planning</div></div>';
   document.getElementById('calBody').innerHTML=h;
@@ -3812,7 +3933,7 @@ setPersistence(auth, browserLocalPersistence).catch(function(e){ console.warn('P
 // ════════════════════════════════════════
 // Clé VAPID à récupérer dans la console Firebase :
 // Project Settings -> Cloud Messaging -> Web Push certificates -> "Generate key pair"
-const VAPID_KEY = "BG2yuuxT9nFRe2gk5UiyF6apu17dq8r3q2m6QCX8tdsG4FdhdYMAqn62RIOuEn0IrPZGLDfKKolYeEvKc5pM6bI";
+const VAPID_KEY = "COLLE_TA_CLE_VAPID_ICI";
 let messaging = null;
 try { messaging = getMessaging(app); } catch(e){ console.warn('FCM indisponible sur cet appareil', e); }
 
@@ -3890,9 +4011,10 @@ var SAVE_TIMEOUT = null;
 var AUTH_MODE = 'login'; // 'login' ou 'signup'
 
 function showLoginScreen(){
-  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');s.style.display='none';});
+  document.body.classList.add('logged-out');
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');s.style.display='';});
   var sl=document.getElementById('sLogin');
-  sl.style.display='flex';sl.classList.add('active');
+  sl.style.display='';sl.classList.add('active');
   document.getElementById('btnBack').style.display='none';
   document.getElementById('btnAdd').style.display='none';
   document.getElementById('btnCal').style.display='none';
@@ -3901,8 +4023,10 @@ function showLoginScreen(){
 }
 
 function showAppScreen(){
-  document.getElementById('sLogin').style.display='none';
+  document.body.classList.remove('logged-out');
+  document.querySelectorAll('.screen').forEach(function(s){s.style.display='';});
   document.getElementById('sLogin').classList.remove('active');
+  showScreen('sHome');
   document.getElementById('btnAdd').style.display='';
   document.getElementById('btnCal').style.display='';
   document.getElementById('userInfo').style.display='flex';
@@ -4005,7 +4129,7 @@ async function loadFromCloud(uid){
       if(data&&data.folders){
         D.folders=fsDec(data.folders);
         D.progress=fsDec(data.progress||{});
-        D.examProgress=fsDec(data.examProgress||{});
+        D.examProgress=fsDec(data.examProgress||{});D.settings=fsDec(data.settings||{});
         // On ecrit tout de suite dans localStorage : sinon init() -> dbLoad()
         // ecraserait les donnees du cloud avec la copie locale (perimee sur un
         // autre appareil). C'est ce qui cassait la sync entre Mac / iPad / iPhone.
@@ -4023,11 +4147,11 @@ async function saveToCloud(uid){
     // Firestore refuse les tableaux imbriqués (tableau dans un tableau) : c'est le cas
     // des séries de questions importées (qSeries) et des options d'une évaluation en pause.
     // On les encode avant l'envoi (fsEnc) et on les décode au chargement (fsDec).
-    var clean = JSON.parse(JSON.stringify({folders:D.folders,progress:D.progress||{},examProgress:D.examProgress||{}}));
+    var clean = JSON.parse(JSON.stringify({folders:D.folders,progress:D.progress||{},examProgress:D.examProgress||{},settings:D.settings||{}}));
     // Cours dont le J0 n'est pas fait : on n'envoie pas leur planning au cloud,
     // pour qu'ils ne déclenchent aucun rappel/notification côté serveur.
     clean.folders.forEach(function(f){ (f.decks||[]).forEach(function(d){ if(deckPending(d)) d.plan=[]; }); });
-    await setDoc(ref,{folders:fsEnc(clean.folders),progress:fsEnc(clean.progress),examProgress:fsEnc(clean.examProgress),updatedAt:Date.now()});
+    await setDoc(ref,{folders:fsEnc(clean.folders),progress:fsEnc(clean.progress),examProgress:fsEnc(clean.examProgress),settings:fsEnc(clean.settings||{}),updatedAt:Date.now()});
   } catch(e){
     console.error('Erreur sauvegarde:',e);
     try{ toast('⚠️ Sauvegarde cloud impossible — tes données restent sur cet appareil'); }catch(_){}
@@ -4111,16 +4235,20 @@ document.getElementById('authEmail').addEventListener('keydown', function(e){
       navigator.serviceWorker.register('sw.js', {scope: './'}).then(function(reg){
 
         // Une nouvelle version est prete -> on propose de recharger
+        function offerSwUpdate(sw){
+          if(!sw || !navigator.serviceWorker.controller) return;
+          showBar('<span class="pwa-dot" style="background:var(--ac2)"></span>'+
+                  '<span class="pwa-txt">Nouvelle version disponible</span>'+
+                  '<button class="pwa-action">Recharger</button>'+
+                  '<button class="pwa-close">&times;</button>',
+                  {action: function(){ sw.postMessage('SKIP_WAITING'); }});
+        }
         function watch(sw){
           if(!sw) return;
+          // Un worker déjà en attente ne changera plus d'état : proposer tout de suite.
+          if(sw.state === 'installed') offerSwUpdate(sw);
           sw.addEventListener('statechange', function(){
-            if(sw.state === 'installed' && navigator.serviceWorker.controller){
-              showBar('<span class="pwa-dot" style="background:var(--ac2)"></span>'+
-                      '<span class="pwa-txt">Nouvelle version disponible</span>'+
-                      '<button class="pwa-action">Recharger</button>'+
-                      '<button class="pwa-close">&times;</button>',
-                      {action: function(){ sw.postMessage('SKIP_WAITING'); }});
-            }
+            if(sw.state === 'installed') offerSwUpdate(sw);
           });
         }
         watch(reg.waiting);

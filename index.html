@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v11.3-2026-10-07-1935">
+<meta name="app-build" content="v11.4-2026-10-07-1955">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -1175,6 +1175,7 @@ function completeEntry(deck,score,entryId){
   }
   var lateBy=Math.max(0,diffDays(entry.date,t));
   entry.done=true;entry.doneDate=t;entry.score=score;entry.lateBy=lateBy;
+  try{pushRev(folderOf(deck),deck,entry,t);}catch(e){console.error(e);}
   adaptPlan(deck,score,t);
   sortPlan(deck.plan);
   return {score:score,lateBy:lateBy};
@@ -3102,6 +3103,29 @@ function suiviSummary(S){
   S.forEach(function(o){(o.cs||[]).forEach(function(c){t++;if(c.st==='appris')a++;if(c.st==='appris'||c.st==='dispo')av++;if(c.st!=='prevu')f++;});});
   return {total:t,learned:a,available:av,doneFac:f};
 }
+// Envoie chaque révision (J) faite vers le Suivi (file d'attente si hors-ligne)
+function pushRev(folder,deck,entry,t){
+  var cfg=suiviCfg(),c=suiviCache();
+  if(!cfg.url||!c||c.r!=='edit')return;
+  var q=[];try{q=JSON.parse(localStorage.getItem('mf_rev_q')||'[]');}catch(e){}
+  var id=t+'|'+deck.id+'|'+entry.off;
+  q=q.filter(function(x){return x.id!==id;});
+  q.push({id:id,d:t,s:folder?folder.name:'',t:deck.name,j:entry.off});
+  try{localStorage.setItem('mf_rev_q',JSON.stringify(q));}catch(e){}
+  flushRev();
+}
+function flushRev(){
+  var cfg=suiviCfg(),q=[];try{q=JSON.parse(localStorage.getItem('mf_rev_q')||'[]');}catch(e){}
+  if(!cfg.url||!q.length)return;
+  q.forEach(function(x){
+    var u=cfg.url+'?k='+encodeURIComponent(cfg.key||'')+'&json=1&a=rev&p='+encodeURIComponent(JSON.stringify(x));
+    fetch(u,{redirect:'follow'}).then(function(r){return r.json();}).then(function(d){
+      if(d&&d.error)throw new Error(d.error);
+      var cur=[];try{cur=JSON.parse(localStorage.getItem('mf_rev_q')||'[]');}catch(e){}
+      localStorage.setItem('mf_rev_q',JSON.stringify(cur.filter(function(y){return y.id!==x.id;})));
+    }).catch(function(e){console.warn('rev en attente',e);});
+  });
+}
 function toggleAppris(id,v){
   var cfg=suiviCfg();
   var u=cfg.url+'?k='+encodeURIComponent(cfg.key||'')+'&json=1&a=done&id='+encodeURIComponent(id)+'&v='+v;
@@ -3119,7 +3143,8 @@ function syncSuivi(silent){
   if(!silent)toast('Synchronisation du suivi…');
   return fetch(u,{redirect:'follow'}).then(function(r){return r.json();}).then(function(d){
     if(!d||d.error||!d.subj)throw new Error((d&&d.error)||'Réponse invalide');
-    localStorage.setItem('mf_suivi_cache',JSON.stringify({r:d.r,ts:Date.now(),subj:d.subj,agenda:d.agenda||[],hier:d.hier||[],summary:suiviSummary(d.subj)}));
+    localStorage.setItem('mf_suivi_cache',JSON.stringify({r:d.r,ts:Date.now(),subj:d.subj,agenda:d.agenda||[],hier:d.hier||[],revHier:d.revHier||[],revToday:d.revToday||[],summary:suiviSummary(d.subj)}));
+    flushRev();
     if(!silent)toast('Suivi à jour ✓');
     renderSuivi();renderSemesterMini();
   }).catch(function(e){
@@ -3172,7 +3197,8 @@ function renderSuivi(){
     return '<details class="panel-card" style="margin-bottom:8px;padding:12px 14px"><summary style="cursor:pointer;display:flex;align-items:center;gap:10px;list-style:none"><span style="font-size:22px">'+(o.e||'📘')+'</span><div style="flex:1;min-width:0"><div class="sr-title">'+esc(o.n)+'</div><div class="sr-sub">'+a+' / '+cs.length+' appris · examen '+esc(o.xl||'')+'</div><div class="gauge-bar" style="margin-top:6px"><div class="gauge-fill g-gr" style="width:'+p+'%"></div></div></div><span style="font-size:12px;color:var(--tx2)">'+p+'%</span></summary><div style="margin-top:10px">'+
       cs.map(function(c){return '<div class="subject-progress-row"><span>'+(IC[c.st]||'•')+'</span><div class="sp-name" style="font-weight:500">'+esc(c.t)+'<div style="font-size:11px;color:var(--tx3);font-weight:400">'+(LB[c.st]||'')+' · '+fd(c.d)+'</div></div>'+link(c)+(c.st==='appris'||c.st==='dispo'?chk(c):'')+'</div>';}).join('')+'</div></details>';
   }).join('');
-  el.innerHTML=head+stats+ag+lp+subj;
+  var rv=(d.revHier||[]).length?'<div class="panel-card" style="margin-bottom:16px"><div class="panel-head"><h3>🧠 Révisions faites hier</h3></div><div class="suivi-list">'+d.revHier.map(function(c){return '<div class="suivi-row"><span>🧠</span><div class="sr-main"><div class="sr-title">'+esc(c.t)+'</div><div class="sr-sub">'+esc(c.s)+' · J'+c.j+'</div></div></div>';}).join('')+'</div></div>':'';
+  el.innerHTML=head+stats+ag+rv+lp+subj;
 }
 
 

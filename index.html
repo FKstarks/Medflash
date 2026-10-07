@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v10-2026-10-03">
+<meta name="app-build" content="v11-2026-10-07">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -353,10 +353,77 @@ body{-webkit-overflow-scrolling:touch}
 .study-write-inp{width:100%;padding:14px 16px;background:var(--s2);border:2px solid var(--ye);border-radius:15px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:16px;outline:none;resize:vertical;min-height:110px;transition:border-color .15s;display:block;-webkit-user-select:text;user-select:text}
 .study-write-inp:focus{border-color:var(--ac)}
 .pencil-hint{font-size:12px;color:var(--tx3);margin-top:6px;display:flex;align-items:center;gap:6px}
+
+/* ===== V11 — navigation + dashboard ===== */
+.app-sidebar{display:none}
+.mobile-nav{display:none}
+.home-dashboard{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px;margin-bottom:20px}
+.dash-kpi{background:var(--s1);border:1px solid var(--bd);border-radius:18px;padding:16px;box-shadow:var(--sh2);min-height:104px;display:flex;align-items:center;gap:13px}
+.dash-kpi .dk-icon{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--s2);font-size:23px;flex:none}
+.dash-kpi .dk-n{font-family:'Syne',sans-serif;font-size:25px;font-weight:800;line-height:1}
+.dash-kpi .dk-l{font-size:12px;color:var(--tx2);margin-top:5px;line-height:1.35}
+.dash-kpi.small{grid-column:span 3}
+.dash-kpi.start{grid-column:span 6;cursor:pointer;background:linear-gradient(135deg,rgba(245,158,11,.10),rgba(108,99,255,.08));border-color:rgba(245,158,11,.28)}
+.dash-kpi.start:hover{border-color:var(--ye);transform:translateY(-1px)}
+.dash-kpi.start .dk-main{flex:1;min-width:0}
+.dash-arrow{font-size:20px;color:var(--tx3)}
+.home-two-col{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.75fr);gap:16px;align-items:start;margin-bottom:26px}
+.panel-card{background:var(--s1);border:1px solid var(--bd);border-radius:18px;padding:18px;box-shadow:var(--sh2)}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:13px}
+.panel-head h3{font-family:'Syne',sans-serif;font-size:15px;margin:0}
+.mini-link{border:0;background:none;color:var(--ac);cursor:pointer;font:600 12px 'DM Sans',sans-serif}
+.subject-progress-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bd)}
+.subject-progress-row:last-child{border-bottom:0}
+.subject-progress-row .sp-name{flex:1;min-width:0;font-size:13px;font-weight:600}
+.subject-progress-row .sp-bar{width:74px;height:6px;background:var(--s2);border-radius:99px;overflow:hidden}
+.subject-progress-row .sp-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--ac),var(--ac2));border-radius:inherit}
+.subject-progress-row .sp-pct{width:34px;text-align:right;font-size:11px;color:var(--tx2)}
+.start-compact{background:linear-gradient(135deg,rgba(245,158,11,.09),rgba(108,99,255,.06));border-color:rgba(245,158,11,.25)}
+.folder-hard{background:rgba(239,68,68,.065);border:1px solid rgba(239,68,68,.22);border-radius:16px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.folder-hard .fh-main{flex:1}.folder-hard .fh-title{font-weight:700;font-size:14px}.folder-hard .fh-sub{font-size:12px;color:var(--tx2);margin-top:2px}
+.suivi-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.suivi-stat{background:var(--s1);border:1px solid var(--bd);border-radius:16px;padding:15px;text-align:center}.suivi-stat b{display:block;font-family:'Syne',sans-serif;font-size:24px}.suivi-stat span{font-size:12px;color:var(--tx2)}
+.suivi-list{display:flex;flex-direction:column;gap:8px}.suivi-row{display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:12px 14px}.suivi-row .sr-main{flex:1;min-width:0}.suivi-row .sr-title{font-size:14px;font-weight:600}.suivi-row .sr-sub{font-size:12px;color:var(--tx2);margin-top:2px}
+.empty-soft{padding:30px;text-align:center;background:var(--s1);border:1px dashed var(--bd);border-radius:18px;color:var(--tx2)}
+.global-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.spark-bars{height:150px;display:flex;align-items:flex-end;gap:7px;padding:12px 4px 2px}.spark-bars i{flex:1;min-width:5px;background:linear-gradient(180deg,var(--ac2),var(--ac));border-radius:6px 6px 2px 2px;opacity:.9}
+.stats-two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.week-grid{display:grid;grid-template-columns:52px repeat(7,minmax(92px,1fr));gap:1px;background:var(--bd);border:1px solid var(--bd);border-radius:16px;overflow:auto}.week-cell{background:var(--s1);min-height:58px;padding:7px;font-size:11px}.week-head{background:var(--s2);font-weight:700;text-align:center;position:sticky;top:0;z-index:1}.week-time{background:var(--s2);color:var(--tx3);text-align:right}.week-event{padding:6px 7px;border-radius:8px;margin-bottom:5px;background:rgba(108,99,255,.13);border:1px solid rgba(108,99,255,.25);cursor:pointer;line-height:1.25}.week-event.exam{background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.28)}
+@media(min-width:900px){
+  body{padding-left:210px}
+  .app-sidebar{display:flex;position:fixed;inset:0 auto 0 0;width:210px;background:var(--s1);border-right:1px solid var(--bd);z-index:120;flex-direction:column;padding:18px 12px;box-shadow:var(--sh2)}
+  .side-logo{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;padding:6px 10px 18px;cursor:pointer}.side-nav{display:flex;flex-direction:column;gap:5px}.side-item{display:flex;align-items:center;gap:10px;border:0;background:transparent;color:var(--tx2);padding:10px 12px;border-radius:11px;cursor:pointer;text-align:left;font:500 13px 'DM Sans',sans-serif}.side-item:hover,.side-item.active{background:rgba(108,99,255,.12);color:var(--tx)}.side-item.active{color:var(--ac2);font-weight:700}.side-bottom{margin-top:auto;border-top:1px solid var(--bd);padding-top:10px}
+  nav{left:210px;padding:12px 24px}.logo{display:none}.screen{max-width:1220px;padding:28px 26px}
+}
+@media(max-width:899px){
+  .home-dashboard{grid-template-columns:repeat(2,minmax(0,1fr))}.dash-kpi.small{grid-column:span 1}.dash-kpi.start{grid-column:1/-1}.home-two-col{grid-template-columns:1fr}.suivi-summary,.global-stats-grid{grid-template-columns:repeat(2,1fr)}.stats-two{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  body{padding-bottom:74px}.mobile-nav{display:grid;position:fixed;left:0;right:0;bottom:0;z-index:130;grid-template-columns:repeat(5,1fr);background:rgba(15,17,23,.94);border-top:1px solid var(--bd);backdrop-filter:blur(18px);padding:5px 4px calc(5px + env(safe-area-inset-bottom))}.light .mobile-nav{background:rgba(255,255,255,.94)}.mobile-nav button{border:0;background:transparent;color:var(--tx2);font:500 10px 'DM Sans',sans-serif;padding:5px 2px;border-radius:9px}.mobile-nav button span{display:block;font-size:19px;margin-bottom:1px}.mobile-nav button.active{color:var(--ac)}
+  .home-dashboard{gap:9px}.dash-kpi{padding:12px;min-height:88px;border-radius:15px}.dash-kpi .dk-icon{width:38px;height:38px;font-size:20px}.dash-kpi .dk-n{font-size:21px}.dash-kpi .dk-l{font-size:10px}.home-two-col{gap:12px}.suivi-summary,.global-stats-grid{grid-template-columns:repeat(2,1fr)}
+  nav .nav-r .theme-btn:nth-of-type(1){display:none}
+}
+
 </style>
 </head>
 <body>
 <div id="app">
+<aside class="app-sidebar" id="appSidebar">
+  <div class="side-logo" onclick="goHome()">🧠 Med<span style="color:var(--tx2);font-weight:500">Flash</span> ✨</div>
+  <div class="side-nav">
+    <button class="side-item active" data-screen="sHome" onclick="goHome()">🏠 Aujourd'hui</button>
+    <button class="side-item" data-screen="sSuivi" onclick="openSuivi()">📚 Suivi du semestre</button>
+    <button class="side-item" data-screen="sHome" onclick="goHome();setTimeout(function(){document.getElementById('foldersGrid').scrollIntoView({behavior:'smooth'})},80)">📖 Matières</button>
+    <button class="side-item" data-screen="sCal" onclick="openCalendar()">🗓️ Planning</button>
+    <button class="side-item" data-screen="sHome" onclick="goHome()">🧠 Révisions</button>
+    <button class="side-item" data-screen="sGlobalStats" onclick="openGlobalStats()">📊 Statistiques</button>
+  </div>
+  <div class="side-bottom side-nav">
+    <button class="side-item" onclick="toggleNotifPanel()">🔔 Notifications</button>
+    <button class="side-item" onclick="exportData()">📤 Exporter</button>
+    <button class="side-item" onclick="toggleTheme()">🌓 Thème</button>
+  </div>
+</aside>
 <nav>
   <div class="logo" onclick="goHome()">Med<span style="-webkit-text-fill-color:var(--tx2);font-weight:400">Flash</span></div>
   <div class="nav-r">
@@ -377,6 +444,13 @@ body{-webkit-overflow-scrolling:touch}
     <button class="btn btn-primary btn-sm" id="btnAdd" onclick="onAdd()">+ Nouveau</button>
   </div>
 </nav>
+<div class="mobile-nav" id="mobileNav">
+  <button data-screen="sHome" class="active" onclick="goHome()"><span>🏠</span>Accueil</button>
+  <button data-screen="sSuivi" onclick="openSuivi()"><span>📚</span>Suivi</button>
+  <button data-screen="sHome" onclick="goHome();setTimeout(function(){document.getElementById('foldersGrid').scrollIntoView({behavior:'smooth'})},80)"><span>📖</span>Matières</button>
+  <button data-screen="sCal" onclick="openCalendar()"><span>🗓️</span>Planning</button>
+  <button data-screen="sGlobalStats" onclick="openGlobalStats()"><span>•••</span>Plus</button>
+</div>
 
 <!-- ÉCRAN DE CONNEXION -->
 <div id="sLogin" class="screen active" style="display:flex;align-items:center;justify-content:center;min-height:80vh">
@@ -405,11 +479,39 @@ body{-webkit-overflow-scrolling:touch}
 <!-- ACCUEIL -->
 <div id="sHome" class="screen active">
   <div class="home-h">
-    <div class="home-title">Mes matières 📚</div>
-    <div class="home-sub" id="homeSub">Sélectionne une matière pour accéder aux cours</div>
+    <div class="home-title">Bonjour ! 👋</div>
+    <div class="home-sub" id="homeSub">Prêt pour une nouvelle journée de révisions ?</div>
   </div>
+  <div class="home-dashboard" id="homeDashboard"></div>
   <div id="todayPanel"></div>
-  <div class="grid4" id="foldersGrid"></div>
+  <div class="home-two-col">
+    <div class="panel-card">
+      <div class="panel-head"><h3>📚 Mes matières</h3><button class="mini-link" onclick="openFolderModal()">+ Nouvelle matière</button></div>
+      <div class="grid4" id="foldersGrid"></div>
+    </div>
+    <div>
+      <div class="panel-card" id="semesterMini" style="margin-bottom:16px"></div>
+      <div class="panel-card" id="examMini"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SUIVI DU SEMESTRE -->
+<div id="sSuivi" class="screen">
+  <div class="home-h">
+    <div class="home-title">Suivi du semestre 📚</div>
+    <div class="home-sub">Cours prévus, faits à la fac, ronéos disponibles et cours appris</div>
+  </div>
+  <div id="suiviBody"></div>
+</div>
+
+<!-- STATISTIQUES GLOBALES -->
+<div id="sGlobalStats" class="screen">
+  <div class="home-h">
+    <div class="home-title">Statistiques 📊</div>
+    <div class="home-sub">Une vue globale de ta progression, sans mélanger les cartes entre matières</div>
+  </div>
+  <div id="globalStatsBody"></div>
 </div>
 
 <!-- MATIÈRE -->
@@ -536,6 +638,7 @@ body{-webkit-overflow-scrolling:touch}
     </div>
     <div class="seg" id="calSeg">
       <button class="on" id="calSegM" onclick="setCalView('month')">📅 Mois</button>
+      <button id="calSegW" onclick="setCalView('week')">🗓️ Semaine</button>
       <button id="calSegA" onclick="setCalView('agenda')">📋 Agenda</button>
     </div>
   </div>
@@ -1130,9 +1233,10 @@ function applyTheme(){
 // ════════════════════════════════════════
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
-  document.getElementById(id).classList.add('active');
-  document.getElementById('btnBack').style.display=id==='sHome'?'none':'block';
-  document.getElementById('btnAdd').style.display=(id==='sCal'||id==='sExam')?'none':'';
+  var target=document.getElementById(id);if(target)target.classList.add('active');
+  document.getElementById('btnBack').style.display=(id==='sHome'||id==='sSuivi'||id==='sGlobalStats')?'none':'block';
+  document.getElementById('btnAdd').style.display=(id==='sCal'||id==='sExam'||id==='sSuivi'||id==='sGlobalStats')?'none':'';
+  document.querySelectorAll('[data-screen]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-screen')===id);});
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function goHome(){CUR.folder=null;CUR.deck=null;document.getElementById('btnAdd').textContent='+ Nouveau';showScreen('sHome');renderHome();}
@@ -1187,7 +1291,10 @@ function eventsOn(dateStr){
 // HOME
 // ════════════════════════════════════════
 function renderHome(){
+  renderDashboard();
   renderToday();
+  renderSemesterMini();
+  renderExamMini();
   var g=document.getElementById('foldersGrid');
   g.innerHTML='';
   var t=today();
@@ -1228,6 +1335,31 @@ function renderHome(){
   g.appendChild(add);
 }
 
+function dashboardNumbers(){
+  var due=allDue().filter(function(x){return x.entry.date<=today();});
+  var dueCards=due.reduce(function(n,x){return n+(x.deck.cards||[]).length;},0);
+  var pending=[];D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){if(deckPending(d)&&(d.cards||[]).length)pending.push({folder:f,deck:d});});});
+  var sessions=[];D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){(d.sessions||[]).forEach(function(x){sessions.push(x);});});});
+  sessions.sort(function(a,b){return b.date-a.date;});var recent=sessions.slice(0,20);
+  var rate=recent.length?Math.round(recent.reduce(function(a,x){return a+(x.score||0);},0)/recent.length):0;
+  return {dueCards:dueCards,dueCourses:due.length,pending:pending,rate:rate};
+}
+function renderDashboard(){
+  var box=document.getElementById('homeDashboard');if(!box)return;var n=dashboardNumbers();
+  box.innerHTML='<div class="dash-kpi small"><div class="dk-icon">📖</div><div><div class="dk-n">'+n.dueCards+'</div><div class="dk-l">cartes à réviser aujourd\'hui<br>'+n.dueCourses+' cours</div></div></div>'+
+    '<div class="dash-kpi small"><div class="dk-icon">🎯</div><div><div class="dk-n">'+n.rate+'%</div><div class="dk-l">taux de réussite<br>sur les dernières sessions</div></div></div>'+
+    '<div class="dash-kpi start" onclick="scrollToPending()"><div class="dk-icon">🚀</div><div class="dk-main"><div style="font-size:12px;color:var(--ac2);font-weight:700">Cours à démarrer</div><div class="dk-n" style="margin-top:4px">'+n.pending.length+' cours</div><div class="dk-l">Prêts à commencer · J0 à faire</div></div><div class="dash-arrow">›</div></div>';
+}
+function scrollToPending(){var el=document.getElementById('pendingPanelAnchor');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});}
+function renderSemesterMini(){
+  var el=document.getElementById('semesterMini');if(!el)return;
+  var cache=null;try{cache=JSON.parse(localStorage.getItem('mf_suivi_cache')||'null')}catch(e){}
+  if(cache&&cache.summary){var x=cache.summary;var pct=x.total?Math.round(x.learned/x.total*100):0;el.innerHTML='<div class="panel-head"><h3>📚 Avancement du semestre</h3><button class="mini-link" onclick="openSuivi()">Voir le suivi</button></div><div style="font-family:Syne,sans-serif;font-size:24px;font-weight:800">'+x.learned+' / '+x.total+' <span style="font:500 12px DM Sans;color:var(--tx2)">cours appris</span></div><div class="gauge-bar" style="margin:11px 0 8px"><div class="gauge-fill g-gr" style="width:'+pct+'%"></div></div><div style="font-size:12px;color:var(--tx2)">'+(x.available||0)+' ronéos disponibles · '+(x.doneFac||0)+' cours faits à la fac</div>';return;}
+  var started=0,total=0;D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){total++;if(!deckPending(d))started++;});});var pct=total?Math.round(started/total*100):0;
+  el.innerHTML='<div class="panel-head"><h3>📚 Avancement MedFlash</h3><button class="mini-link" onclick="openSuivi()">Suivi semestre</button></div><div style="font-family:Syne,sans-serif;font-size:24px;font-weight:800">'+started+' / '+total+' <span style="font:500 12px DM Sans;color:var(--tx2)">cours démarrés</span></div><div class="gauge-bar" style="margin:11px 0 8px"><div class="gauge-fill g-gr" style="width:'+pct+'%"></div></div><div style="font-size:12px;color:var(--tx2)">Le suivi fac/ronéo sera affiché ici dès que la passerelle Apps Script sera reliée.</div>';
+}
+function renderExamMini(){var el=document.getElementById('examMini');if(!el)return;var t=today();var fs=D.folders.filter(function(f){return f.examDate&&f.examDate>=t;}).sort(function(a,b){return a.examDate<b.examDate?-1:1;}).slice(0,4);el.innerHTML='<div class="panel-head"><h3>🎓 Prochains examens</h3><button class="mini-link" onclick="openCalendar()">Voir le planning</button></div>'+(fs.length?fs.map(function(f){var d=diffDays(t,f.examDate);return '<div class="subject-progress-row"><span>'+f.emoji+'</span><div class="sp-name">'+esc(f.name)+'</div><span class="tag '+(d<=7?'tag-late':'tag-soon')+'">J-'+d+'</span></div>';}).join(''):'<div style="font-size:12px;color:var(--tx2)">Aucun examen renseigné.</div>');}
+
 // Cours ajoutés (avec des cartes) dont le J0 n'est pas encore fait
 function pendingHtml(){
   var rows=[];
@@ -1237,8 +1369,8 @@ function pendingHtml(){
     });
   });
   if(!rows.length)return '';
-  return '<div class="today-panel">'+
-    '<div class="sec-title">🌱 À démarrer <span style="font-weight:400;font-size:13px;color:var(--tx3)">· J0 pas encore fait</span></div>'+
+  return '<div class="today-panel start-compact" id="pendingPanelAnchor">'+
+    '<div class="sec-title">🚀 À démarrer <span style="font-weight:400;font-size:13px;color:var(--tx3)">· J0 pas encore fait</span></div>'+
     rows.map(function(x){
       var n=(x.deck.cards||[]).length;
       return '<div class="today-row" onclick="jumpTo(\''+x.folder.id+'\',\''+x.deck.id+'\')">'+
@@ -1314,6 +1446,8 @@ function renderFolder(){
       '<span>📅 Aucune date d\'examen pour cette matière. Renseigne-la pour que l\'appli génère automatiquement le planning J de chaque cours.</span>'+
       '<button class="btn btn-primary btn-sm" onclick="editFolder(\''+f.id+'\')">Ajouter la date</button></div>';
   } else al.innerHTML='';
+  var hard=[];(f.decks||[]).forEach(function(d){(d.cards||[]).forEach(function(c){if(isHard(c))hard.push({deck:d,card:c});});});
+  if(hard.length){al.innerHTML += '<div class="folder-hard"><div style="font-size:24px">🔥</div><div class="fh-main"><div class="fh-title">Cartes difficiles dans cette matière</div><div class="fh-sub">'+hard.length+' carte'+(hard.length>1?'s':'')+' à reprendre avant le partiel</div></div><button class="btn btn-ghost btn-sm" onclick="openHardFromFolder()">Voir</button></div>';}
 
   var g=document.getElementById('decksGrid');
   g.innerHTML='';
@@ -1343,6 +1477,11 @@ function renderFolder(){
   add.innerHTML='<div style="font-size:28px">+</div><div style="font-size:14px">Nouveau cours</div>';
   add.onclick=openDeckModal;
   g.appendChild(add);
+}
+
+function openHardFromFolder(){
+  if(!CUR.folder)return;var d=(CUR.folder.decks||[]).find(function(x){return (x.cards||[]).some(isHard);});
+  if(!d){toast('Aucune carte difficile dans cette matière');return;}openDeck(d.id);setTimeout(function(){setFilter('hard');},60);
 }
 
 function deckStatus(d){
@@ -2842,6 +2981,27 @@ function regenCurrentPlan(){
 }
 
 // ════════════════════════════════════════
+// SUIVI DU SEMESTRE (passerelle Apps Script)
+// ════════════════════════════════════════
+function openSuivi(){showScreen('sSuivi');renderSuivi();}
+function suiviCache(){try{return JSON.parse(localStorage.getItem('mf_suivi_cache')||'null')}catch(e){return null}}
+function renderSuivi(){
+  var el=document.getElementById('suiviBody');if(!el)return;var d=suiviCache();
+  if(!d||!d.subj){el.innerHTML='<div class="empty-soft"><div style="font-size:34px;margin-bottom:10px">🔗</div><div style="font-family:Syne,sans-serif;font-weight:700;margin-bottom:6px">Passerelle Suivi MED2 prête à être reliée</div><div style="font-size:13px;line-height:1.65">L\'interface MedFlash est prête. Il reste à connecter l\'endpoint Apps Script pour récupérer automatiquement les cours faits à la fac, les nouvelles ronéos et les statuts appris, sans stocker les PDF dans Firebase.</div></div>';return;}
+  var S=d.subj,all=[];S.forEach(function(o){(o.cs||[]).forEach(function(c){all.push(c);});});var a=all.filter(function(c){return c.st==='appris';}).length,dis=all.filter(function(c){return c.st==='dispo'||c.st==='appris';}).length,fac=all.filter(function(c){return c.st!=='prevu';}).length,total=all.length;
+  el.innerHTML='<div class="suivi-summary"><div class="suivi-stat"><b>'+a+' / '+total+'</b><span>cours appris</span></div><div class="suivi-stat"><b>'+dis+'</b><span>ronéos disponibles</span></div><div class="suivi-stat"><b>'+fac+'</b><span>faits à la fac</span></div><div class="suivi-stat"><b>'+Math.max(0,dis-a)+'</b><span>à apprendre</span></div></div>'+
+    '<div class="panel-card"><div class="panel-head"><h3>Progression par matière</h3></div><div class="suivi-list">'+S.map(function(o){var t=(o.cs||[]).length,aa=(o.cs||[]).filter(function(c){return c.st==='appris';}).length,p=t?Math.round(aa/t*100):0;return '<div class="suivi-row"><div style="font-size:23px">'+(o.e||'📘')+'</div><div class="sr-main"><div class="sr-title">'+esc(o.n)+'</div><div class="sr-sub">'+aa+' / '+t+' appris · '+((o.cs||[]).filter(function(c){return c.st==='dispo';}).length)+' à apprendre</div><div class="gauge-bar" style="margin-top:7px"><div class="gauge-fill g-gr" style="width:'+p+'%"></div></div></div><span style="font-size:12px;color:var(--tx2)">'+p+'%</span></div>';}).join('')+'</div></div>';
+}
+
+function openGlobalStats(){showScreen('sGlobalStats');renderGlobalStats();}
+function renderGlobalStats(){
+  var el=document.getElementById('globalStatsBody');if(!el)return;var sessions=[],cards=0,ok=0,ko=0;D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){cards+=(d.cards||[]).length;(d.sessions||[]).forEach(function(x){sessions.push(x);});(d.cards||[]).forEach(function(c){ok+=(c.stats&&c.stats.ok)||0;ko+=(c.stats&&c.stats.ko)||0;});});});sessions.sort(function(a,b){return a.date-b.date;});var rate=(ok+ko)?Math.round(ok/(ok+ko)*100):0;var totalReviewed=sessions.reduce(function(a,x){return a+(x.total||0);},0);var days={};sessions.forEach(function(x){var ds=tsToStr(x.date);days[ds]=(days[ds]||0)+(x.total||1);});var keys=Object.keys(days).sort().slice(-21);var max=Math.max.apply(null,[1].concat(keys.map(function(k){return days[k];})));
+  var streak=0,dt=new Date();for(var i=0;i<60;i++){var ds=toDateStr(dt);if(days[ds]){streak++;dt.setDate(dt.getDate()-1);}else if(i===0){dt.setDate(dt.getDate()-1);}else break;}
+  el.innerHTML='<div class="global-stats-grid"><div class="suivi-stat"><b>'+totalReviewed+'</b><span>cartes révisées</span></div><div class="suivi-stat"><b>'+rate+'%</b><span>taux de réussite</span></div><div class="suivi-stat"><b>'+sessions.length+'</b><span>sessions</span></div><div class="suivi-stat"><b>'+streak+'</b><span>jours de série</span></div></div>'+
+    '<div class="stats-two"><div class="panel-card"><div class="panel-head"><h3>Cartes révisées par jour</h3></div><div class="spark-bars">'+keys.map(function(k){return '<i title="'+k+' · '+days[k]+'" style="height:'+Math.max(5,Math.round(days[k]/max*100))+'%"></i>';}).join('')+'</div></div><div class="panel-card"><div class="panel-head"><h3>Progression par matière</h3></div>'+D.folders.map(function(f){var ds=f.decks||[],tot=ds.length,done=ds.filter(function(d){return !deckPending(d);}).length,p=tot?Math.round(done/tot*100):0;return '<div class="subject-progress-row"><span>'+f.emoji+'</span><div class="sp-name">'+esc(f.name)+'</div><div class="sp-bar"><i style="width:'+p+'%"></i></div><div class="sp-pct">'+p+'%</div></div>';}).join('')+'</div></div>';
+}
+
+// ════════════════════════════════════════
 // CALENDRIER
 // ════════════════════════════════════════
 var CAL={view:'month',ref:new Date()};
@@ -2854,11 +3014,13 @@ function openCalendar(){
 function setCalView(v){
   CAL.view=v;
   document.getElementById('calSegM').classList.toggle('on',v==='month');
+  var sw=document.getElementById('calSegW');if(sw)sw.classList.toggle('on',v==='week');
   document.getElementById('calSegA').classList.toggle('on',v==='agenda');
   renderCal();
 }
 function calShift(n){
   if(CAL.view==='month')CAL.ref.setMonth(CAL.ref.getMonth()+n);
+  else if(CAL.view==='week')CAL.ref.setDate(CAL.ref.getDate()+n*7);
   else CAL.ref.setDate(CAL.ref.getDate()+n*14);
   renderCal();
 }
@@ -2889,7 +3051,7 @@ function renderCalKpi(){
 
 function renderCal(){
   renderCalKpi();
-  if(CAL.view==='month')renderCalMonth();else renderCalAgenda();
+  if(CAL.view==='month')renderCalMonth();else if(CAL.view==='week')renderCalWeek();else renderCalAgenda();
 }
 
 function renderCalMonth(){
@@ -2922,6 +3084,31 @@ function renderCalMonth(){
   }
   h+='</div>';
   document.getElementById('calBody').innerHTML=h;
+}
+
+function renderCalWeek(){
+  var b=document.getElementById('calBody');
+  var d=new Date(CAL.ref),day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);
+  var days=[];for(var i=0;i<7;i++){var x=new Date(d);x.setDate(d.getDate()+i);days.push(x);}
+  var names=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  var h='<div class="week-grid"><div class="week-cell week-head"></div>';
+  days.forEach(function(x,i){h+='<div class="week-cell week-head">'+names[i]+'<br>'+x.getDate()+'</div>';});
+  var hours=[8,10,12,14,16,18,20];
+  hours.forEach(function(hr){
+    h+='<div class="week-cell week-time">'+hr+'h</div>';
+    days.forEach(function(x){
+      var ds=toDateStr(x),evs=eventsOn(ds),exams=D.folders.filter(function(f){return f.examDate===ds;});
+      h+='<div class="week-cell">';
+      if(hr===8){
+        exams.forEach(function(f){h+="<div class=\"week-event exam\" onclick=\"openDay('"+ds+"')\">🎓 "+esc(f.name)+"</div>";});
+        evs.forEach(function(e){h+="<div class=\"week-event\" style=\"border-left:3px solid "+e.folder.color+"\" onclick=\"jumpTo('"+e.folder.id+"','"+e.deck.id+"')\">"+esc(e.deck.name)+" · J"+e.entry.off+"</div>";});
+      }
+      h+='</div>';
+    });
+  });
+  h+='</div>';b.innerHTML=h;
+  var m=document.getElementById('calMonth');
+  m.textContent='Semaine du '+days[0].getDate()+' au '+days[6].getDate()+' '+days[6].toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
 }
 
 function renderCalAgenda(){
@@ -3532,7 +3719,7 @@ setPersistence(auth, browserLocalPersistence).catch(function(e){ console.warn('P
 // ════════════════════════════════════════
 // Clé VAPID à récupérer dans la console Firebase :
 // Project Settings -> Cloud Messaging -> Web Push certificates -> "Generate key pair"
-const VAPID_KEY = "BG2yuuxT9nFRe2gk5UiyF6apu17dq8r3q2m6QCX8tdsG4FdhdYMAqn62RIOuEn0IrPZGLDfKKolYeEvKc5pM6bI";
+const VAPID_KEY = "COLLE_TA_CLE_VAPID_ICI";
 let messaging = null;
 try { messaging = getMessaging(app); } catch(e){ console.warn('FCM indisponible sur cet appareil', e); }
 
@@ -3617,6 +3804,7 @@ function showLoginScreen(){
   document.getElementById('btnAdd').style.display='none';
   document.getElementById('btnCal').style.display='none';
   document.getElementById('userInfo').style.display='none';
+  var sb=document.getElementById('appSidebar');if(sb)sb.style.display='none';var mn=document.getElementById('mobileNav');if(mn)mn.style.display='none';
 }
 
 function showAppScreen(){
@@ -3625,6 +3813,7 @@ function showAppScreen(){
   document.getElementById('btnAdd').style.display='';
   document.getElementById('btnCal').style.display='';
   document.getElementById('userInfo').style.display='flex';
+  var sb=document.getElementById('appSidebar');if(sb)sb.style.display='';var mn=document.getElementById('mobileNav');if(mn)mn.style.display='';
 }
 
 function authShowError(msg){

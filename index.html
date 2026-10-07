@@ -1379,6 +1379,10 @@ function eventsOn(dateStr){
 // ════════════════════════════════════════
 // HOME
 // ════════════════════════════════════════
+function subjectProgressHtml(){
+  if(!D.folders.length)return '<div class="dashboard-empty">Aucune matière</div>';
+  return D.folders.map(function(f){var ds=f.decks||[],tot=ds.length,done=ds.filter(function(d){return !deckPending(d);}).length,p=tot?Math.round(done/tot*100):0;return '<div class="subject-progress-row" style="cursor:pointer" onclick="openFolder(\''+f.id+'\')"><span>'+f.emoji+'</span><div class="sp-name">'+esc(f.name)+'</div><div class="sp-bar"><i style="width:'+p+'%"></i></div><div class="sp-pct">'+p+'%</div></div>';}).join('');
+}
 function renderHome(){
   renderDashboard();
   renderHomeToday();
@@ -1476,7 +1480,7 @@ function renderHomeToday(){
   var due=allDue().filter(function(x){return x.entry.date<=today();});
   var list=document.getElementById('homeDueList');if(list)list.innerHTML=due.length?due.slice(0,4).map(homeDueRow).join('')+'<button class="mini-link" style="align-self:flex-end;margin-top:4px" onclick="openReviews()">'+(due.length>4?'+ '+(due.length-4)+' autres · ':'')+'ouvrir les révisions →</button>':'<div class="dashboard-empty">✓ Rien à réviser aujourd\'hui</div>';
   var pending=[];D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){if(deckPending(d)&&(d.cards||[]).length)pending.push({folder:f,deck:d});});});
-  var box=document.getElementById('homePendingPanel');if(box){box.innerHTML='<div class="panel-head"><h3>🚀 À démarrer <span class="tag tag-soon" style="margin-left:6px">'+pending.length+'</span></h3><button class="mini-link" onclick="openReviews()">Tout voir</button></div>'+ (pending.length?pending.slice(0,3).map(function(x){return '<div class="today-row" style="margin-bottom:7px" onclick="jumpTo(\''+x.folder.id+'\',\''+x.deck.id+'\')"><div class="tr-dot" style="background:'+x.folder.color+'"></div><div class="tr-main"><div class="tr-t">'+esc(x.deck.name)+'</div><div class="tr-s">'+x.folder.emoji+' '+esc(x.folder.name)+'</div></div><span class="tag tag-soon">J0</span></div>';}).join(''):'<div class="dashboard-empty">Aucun J0 en attente</div>');}
+  var box=document.getElementById('homePendingPanel');if(box){box.innerHTML='<div class="panel-head"><h3>📈 Progression par matière</h3><button class="mini-link" onclick="openSubjects()">Matières</button></div>'+subjectProgressHtml();}
   var sub=document.getElementById('homeSub');if(sub)sub.textContent=due.length?(due.length+' révision'+(due.length>1?'s':'')+' à faire aujourd\'hui'):'Rien à réviser aujourd\'hui';
 }
 function renderReviews(){
@@ -3098,6 +3102,16 @@ function suiviSummary(S){
   S.forEach(function(o){(o.cs||[]).forEach(function(c){t++;if(c.st==='appris')a++;if(c.st==='appris'||c.st==='dispo')av++;if(c.st!=='prevu')f++;});});
   return {total:t,learned:a,available:av,doneFac:f};
 }
+function toggleAppris(id,v){
+  var cfg=suiviCfg();
+  var u=cfg.url+'?k='+encodeURIComponent(cfg.key||'')+'&json=1&a=done&id='+encodeURIComponent(id)+'&v='+v;
+  toast(v?'Marqué comme appris…':'Annulation…');
+  fetch(u,{redirect:'follow'}).then(function(r){return r.json();}).then(function(d){
+    if(!d||d.error||!d.subj)throw new Error((d&&d.error)||'Réponse invalide');
+    localStorage.setItem('mf_suivi_cache',JSON.stringify({r:d.r,ts:Date.now(),subj:d.subj,agenda:d.agenda||[],hier:d.hier||[],summary:suiviSummary(d.subj)}));
+    toast(v?'Appris ✓':'Annulé');renderSuivi();renderSemesterMini();
+  }).catch(function(e){console.error(e);toast('Modification impossible — utilise le lien MODIFIABLE (clé EDIT)');});
+}
 function syncSuivi(silent){
   var cfg=suiviCfg();
   if(!cfg.url){if(!silent)toast('Renseigne d\'abord le lien du Suivi');return Promise.resolve();}
@@ -3105,7 +3119,7 @@ function syncSuivi(silent){
   if(!silent)toast('Synchronisation du suivi…');
   return fetch(u,{redirect:'follow'}).then(function(r){return r.json();}).then(function(d){
     if(!d||d.error||!d.subj)throw new Error((d&&d.error)||'Réponse invalide');
-    localStorage.setItem('mf_suivi_cache',JSON.stringify({ts:Date.now(),subj:d.subj,agenda:d.agenda||[],hier:d.hier||[],summary:suiviSummary(d.subj)}));
+    localStorage.setItem('mf_suivi_cache',JSON.stringify({r:d.r,ts:Date.now(),subj:d.subj,agenda:d.agenda||[],hier:d.hier||[],summary:suiviSummary(d.subj)}));
     if(!silent)toast('Suivi à jour ✓');
     renderSuivi();renderSemesterMini();
   }).catch(function(e){
@@ -3126,21 +3140,23 @@ function saveSuiviCfg(){
 function renderSuivi(){
   var el=document.getElementById('suiviBody');if(!el)return;
   var d=suiviCache(),cfg=suiviCfg();
-  var head='<div class="panel-card" style="margin-bottom:16px"><div class="panel-head"><h3>🔗 Connexion au Suivi MED2</h3>'+(cfg.url?'<button class="btn btn-ghost btn-sm" onclick="syncSuivi(false)">🔄 Actualiser</button>':'')+'</div>'+
+  var head='<div class="panel-card" style="margin-bottom:16px"><div class="panel-head"><h3>🔗 Connexion au Suivi MED2'+(d&&d.r?' <span class="tag tag-soon" style="margin-left:6px">'+(d.r==='edit'?'modifiable':'lecture seule')+'</span>':'')+'</h3>'+(cfg.url?'<button class="btn btn-ghost btn-sm" onclick="syncSuivi(false)">🔄 Actualiser</button>':'')+'</div>'+
     (cfg.url&&d&&d.ts?'<div style="font-size:12px;color:var(--tx2);margin-bottom:8px">Dernière synchro '+progAgoTxt(d.ts)+'</div>':'')+
     '<details'+(cfg.url?'':' open')+'><summary style="cursor:pointer;font-size:13px;color:var(--ac)">'+(cfg.url?'Modifier la connexion':'Configurer la connexion')+'</summary>'+
     '<div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">'+
     '<input class="finp" id="sv_url" placeholder="Lien /exec de ton appli Apps Script" value="'+esc(cfg.url||'')+'">'+
-    '<input class="finp" id="sv_key" placeholder="Clé de lecture (VIEW)" value="'+esc(cfg.key||'')+'">'+
+    '<input class="finp" id="sv_key" placeholder="Clé (EDIT = modifiable)" value="'+esc(cfg.key||'')+'">'+
     '<button class="btn btn-primary btn-sm" style="align-self:flex-start" onclick="saveSuiviCfg()">Enregistrer et synchroniser</button>'+
-    '<div style="font-size:12px;color:var(--tx3)">Colle le lien « PAPA (lecture seule) » donné par liens() : l\'URL et la clé sont séparées automatiquement.</div></div></details></div>';
+    '<div style="font-size:12px;color:var(--tx3)">Colle ton lien « MOI (modifiable) » donné par liens() : tu pourras marquer les cours « appris » ici. Avec le lien PAPA, l\'affichage est en lecture seule.</div></div></details></div>';
   if(!d||!d.subj){el.innerHTML=head+'<div class="empty-soft">Pas encore de données — configure la connexion ci-dessus.</div>';return;}
   var S=d.subj,sm=suiviSummary(S);
   var IC={appris:'✅',dispo:'📄',fait:'🕐',prevu:'🔒'};
   var LB={appris:'Appris',dispo:'Ronéo dispo',fait:'Fait à la fac · ronéo pas encore dispo',prevu:'Prévu'};
   var fd=function(s){return s?s.slice(8)+'/'+s.slice(5,7):'';};
+  var chk=function(c){return ED?'<button class="btn btn-ghost btn-sm" style="white-space:nowrap" onclick="toggleAppris(\''+c.id+'\','+(c.st==='appris'?0:1)+')">'+(c.st==='appris'?'↩︎ Annuler':'✓ Appris')+'</button>':'';};
   var link=function(c){return c.files&&c.files.length?'<a href="'+esc(c.files[0].u)+'" target="_blank" rel="noopener" style="color:var(--ac);font-size:12px;white-space:nowrap">ouvrir ↗</a>':'';};
   var learn=[];
+  var ED=(d.r==='edit');
   S.forEach(function(o){(o.cs||[]).forEach(function(c){if(c.st==='dispo')learn.push({o:o,c:c});});});
   var stats='<div class="suivi-summary">'+
     '<div class="suivi-stat"><b>'+sm.learned+' / '+sm.total+'</b><span>cours appris</span></div>'+
@@ -3150,11 +3166,11 @@ function renderSuivi(){
   var ag=(d.agenda||[]).length?'<div class="panel-card" style="margin-bottom:16px"><div class="panel-head"><h3>📅 Aujourd\'hui à la fac</h3></div><div class="suivi-list">'+
     d.agenda.map(function(c){return '<div class="suivi-row"><span>'+(IC[c.st]||'📘')+'</span><div class="sr-main"><div class="sr-title">'+esc(c.t)+'</div><div class="sr-sub">'+esc(c.sn)+'</div></div></div>';}).join('')+'</div></div>':'';
   var lp='<div class="panel-card" style="margin-bottom:16px"><div class="panel-head"><h3>📄 À apprendre <span class="tag tag-soon" style="margin-left:6px">'+learn.length+'</span></h3></div>'+
-    (learn.length?'<div class="suivi-list">'+learn.slice(0,20).map(function(x){return '<div class="suivi-row"><span style="font-size:20px">'+(x.o.e||'📘')+'</span><div class="sr-main"><div class="sr-title">'+esc(x.c.t)+'</div><div class="sr-sub">'+esc(x.o.n)+' · fait à la fac le '+fd(x.c.d)+'</div></div>'+link(x.c)+'</div>';}).join('')+(learn.length>20?'<div style="font-size:12px;color:var(--tx3);padding:6px">+ '+(learn.length-20)+' autres</div>':'')+'</div>':'<div class="dashboard-empty">✓ Tout ce qui est disponible est appris</div>')+'</div>';
+    (learn.length?'<div class="suivi-list">'+learn.slice(0,20).map(function(x){return '<div class="suivi-row"><span style="font-size:20px">'+(x.o.e||'📘')+'</span><div class="sr-main"><div class="sr-title">'+esc(x.c.t)+'</div><div class="sr-sub">'+esc(x.o.n)+' · fait à la fac le '+fd(x.c.d)+'</div></div>'+link(x.c)+chk(x.c)+'</div>';}).join('')+(learn.length>20?'<div style="font-size:12px;color:var(--tx3);padding:6px">+ '+(learn.length-20)+' autres</div>':'')+'</div>':'<div class="dashboard-empty">✓ Tout ce qui est disponible est appris</div>')+'</div>';
   var subj='<div class="panel-head" style="margin-top:6px"><h3>Progression par matière</h3></div>'+S.map(function(o){
     var cs=o.cs||[],a=cs.filter(function(c){return c.st==='appris';}).length,p=cs.length?Math.round(a/cs.length*100):0;
     return '<details class="panel-card" style="margin-bottom:8px;padding:12px 14px"><summary style="cursor:pointer;display:flex;align-items:center;gap:10px;list-style:none"><span style="font-size:22px">'+(o.e||'📘')+'</span><div style="flex:1;min-width:0"><div class="sr-title">'+esc(o.n)+'</div><div class="sr-sub">'+a+' / '+cs.length+' appris · examen '+esc(o.xl||'')+'</div><div class="gauge-bar" style="margin-top:6px"><div class="gauge-fill g-gr" style="width:'+p+'%"></div></div></div><span style="font-size:12px;color:var(--tx2)">'+p+'%</span></summary><div style="margin-top:10px">'+
-      cs.map(function(c){return '<div class="subject-progress-row"><span>'+(IC[c.st]||'•')+'</span><div class="sp-name" style="font-weight:500">'+esc(c.t)+'<div style="font-size:11px;color:var(--tx3);font-weight:400">'+(LB[c.st]||'')+' · '+fd(c.d)+'</div></div>'+link(c)+'</div>';}).join('')+'</div></details>';
+      cs.map(function(c){return '<div class="subject-progress-row"><span>'+(IC[c.st]||'•')+'</span><div class="sp-name" style="font-weight:500">'+esc(c.t)+'<div style="font-size:11px;color:var(--tx3);font-weight:400">'+(LB[c.st]||'')+' · '+fd(c.d)+'</div></div>'+link(c)+(c.st==='appris'||c.st==='dispo'?chk(c):'')+'</div>';}).join('')+'</div></details>';
   }).join('');
   el.innerHTML=head+stats+ag+lp+subj;
 }
@@ -3165,7 +3181,7 @@ function renderGlobalStats(){
   var el=document.getElementById('globalStatsBody');if(!el)return;var sessions=[],cards=0,ok=0,ko=0;D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){cards+=(d.cards||[]).length;(d.sessions||[]).forEach(function(x){sessions.push(x);});(d.cards||[]).forEach(function(c){ok+=(c.stats&&c.stats.ok)||0;ko+=(c.stats&&c.stats.ko)||0;});});});sessions.sort(function(a,b){return a.date-b.date;});var rate=(ok+ko)?Math.round(ok/(ok+ko)*100):0;var totalReviewed=sessions.reduce(function(a,x){return a+(x.total||0);},0);var days={};sessions.forEach(function(x){var ds=tsToStr(x.date);days[ds]=(days[ds]||0)+(x.total||1);});var keys=Object.keys(days).sort().slice(-21);var max=Math.max.apply(null,[1].concat(keys.map(function(k){return days[k];})));
   var streak=0,dt=new Date();for(var i=0;i<60;i++){var ds=toDateStr(dt);if(days[ds]){streak++;dt.setDate(dt.getDate()-1);}else if(i===0){dt.setDate(dt.getDate()-1);}else break;}
   el.innerHTML='<div class="global-stats-grid"><div class="suivi-stat"><b>'+totalReviewed+'</b><span>cartes révisées</span></div><div class="suivi-stat"><b>'+rate+'%</b><span>taux de réussite</span></div><div class="suivi-stat"><b>'+sessions.length+'</b><span>sessions</span></div><div class="suivi-stat"><b>'+streak+'</b><span>jours de série</span></div></div>'+
-    '<div class="stats-two"><div class="panel-card"><div class="panel-head"><h3>Cartes révisées par jour</h3></div><div class="spark-bars">'+keys.map(function(k){return '<i title="'+k+' · '+days[k]+'" style="height:'+Math.max(5,Math.round(days[k]/max*100))+'%"></i>';}).join('')+'</div></div><div class="panel-card"><div class="panel-head"><h3>Progression par matière</h3></div>'+D.folders.map(function(f){var ds=f.decks||[],tot=ds.length,done=ds.filter(function(d){return !deckPending(d);}).length,p=tot?Math.round(done/tot*100):0;return '<div class="subject-progress-row"><span>'+f.emoji+'</span><div class="sp-name">'+esc(f.name)+'</div><div class="sp-bar"><i style="width:'+p+'%"></i></div><div class="sp-pct">'+p+'%</div></div>';}).join('')+'</div></div>';
+    '<div class="stats-two"><div class="panel-card"><div class="panel-head"><h3>Cartes révisées par jour</h3></div><div class="spark-bars">'+keys.map(function(k){return '<i title="'+k+' · '+days[k]+'" style="height:'+Math.max(5,Math.round(days[k]/max*100))+'%"></i>';}).join('')+'</div></div><div class="panel-card"><div class="panel-head"><h3>Progression par matière</h3></div>'+subjectProgressHtml()+'</div></div>';
 }
 
 // ════════════════════════════════════════
@@ -3297,32 +3313,40 @@ function renderCalWeek(){
   var b=document.getElementById('calBody');
   var d=new Date(CAL.ref),day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);
   var days=[];for(var i=0;i<7;i++){var x=new Date(d);x.setDate(d.getDate()+i);days.push(x);}
-  var names=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'],t=today();
-  var h='<div class="week-grid"><div class="week-cell week-head"></div>';
-  days.forEach(function(x,i){h+='<div class="week-cell week-head"'+(toDateStr(x)===t?' style="color:var(--ac)"':'')+'>'+names[i]+'<br>'+x.getDate()+'</div>';});
-  // ligne des révisions MedFlash + examens
-  h+='<div class="week-cell week-time" title="Révisions">🧠</div>';
+  var names=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'],t=today(),HH=52;
+  var mn=function(h){var a=h.split(':');return (+a[0])*60+(+a[1]);};
+  var H0=8,H1=19;
+  days.forEach(function(x){facOn(toDateStr(x)).forEach(function(e){H0=Math.min(H0,Math.floor(mn(e[2])/60));H1=Math.max(H1,Math.ceil(Math.max(mn(e[3]),mn(e[2])+30)/60));});});
+  var h='<div class="wk"><div class="wk-head"><div class="wk-gut"></div>';
+  days.forEach(function(x,i){h+='<div class="wk-hd'+(toDateStr(x)===t?' today':'')+'">'+names[i]+' <b>'+x.getDate()+'</b></div>';});
+  h+='</div><div class="wk-allday"><div class="wk-gut" title="Révisions">🧠</div>';
   days.forEach(function(x){
     var ds=toDateStr(x),evs=eventsOn(ds),exams=D.folders.filter(function(f){return f.examDate===ds;});
-    h+='<div class="week-cell">';
+    h+='<div class="wk-ad">';
     exams.forEach(function(f){h+='<div class="week-event exam" onclick="openDay(\''+ds+'\')">🎓 '+esc(f.name)+'</div>';});
     evs.forEach(function(e){h+='<div class="week-event" style="border-left:3px solid '+e.folder.color+(e.entry.done?';opacity:.5':'')+'" onclick="jumpTo(\''+e.folder.id+'\',\''+e.deck.id+'\')">'+esc(e.deck.name)+' · J'+e.entry.off+'</div>';});
     h+='</div>';
   });
-  for(var hr=8;hr<=19;hr++){
-    h+='<div class="week-cell week-time">'+hr+'h</div>';
-    days.forEach(function(x){
-      var ds=toDateStr(x);
-      h+='<div class="week-cell">';
-      facOn(ds).filter(function(e){return Math.max(8,Math.min(19,parseInt(e[2],10)))===hr;}).forEach(function(e){h+=facEvHtml(e);});
-      h+='</div>';
-    });
-  }
+  h+='</div><div class="wk-body" style="height:'+((H1-H0)*HH)+'px"><div class="wk-gut wk-hours">';
+  for(var hr=H0;hr<H1;hr++)h+='<div style="height:'+HH+'px"><span>'+hr+'h</span></div>';
   h+='</div>';
+  days.forEach(function(x){
+    var ds=toDateStr(x),L=facOn(ds).map(function(e){return {e:e,a:mn(e[2]),z:Math.max(mn(e[3]),mn(e[2])+30)};}),cols=[];
+    L.sort(function(p,q){return p.a-q.a;});
+    L.forEach(function(o){var c=0;while(cols[c]!==undefined&&cols[c]>o.a)c++;o.c=c;cols[c]=o.z;});
+    L.forEach(function(o){o.n=1;L.forEach(function(p){if(p.a<o.z&&p.z>o.a)o.n=Math.max(o.n,p.c+1,o.c+1);});});
+    h+='<div class="wk-col'+(ds===t?' today':'')+'">';
+    for(var q=H0;q<H1;q++)h+='<div class="wk-line" style="top:'+((q-H0)*HH)+'px"></div>';
+    L.forEach(function(o){
+      var top=(o.a/60-H0)*HH,ht=Math.max(18,(o.z-o.a)/60*HH-2),w=100/o.n;
+      h+='<div class="week-event wk-ev fac-'+facKind(o.e[0])+'" style="top:'+top+'px;height:'+ht+'px;left:calc('+(o.c*w)+'% + 1px);width:calc('+w+'% - 3px)" title="'+esc(o.e[0])+' '+o.e[2]+'–'+o.e[3]+'"><b>'+o.e[2]+'–'+o.e[3]+'</b><br>'+esc(o.e[0])+'</div>';
+    });
+    h+='</div>';
+  });
+  h+='</div></div>';
   b.innerHTML=h;
   document.getElementById('calMonth').textContent='Semaine du '+days[0].getDate()+' au '+days[6].getDate()+' '+days[6].toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
 }
-
 
 function renderCalAgenda(){
   var t=today();
@@ -4207,6 +4231,16 @@ document.getElementById('authEmail').addEventListener('keydown', function(e){
 #pwaBar .pwa-txt{line-height:1.35}
 #pwaBar button{padding:6px 13px;border-radius:9px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;background:linear-gradient(135deg,var(--ac),#5b52f0);color:#fff;white-space:nowrap}
 #pwaBar .pwa-close{background:none;color:var(--tx3);font-size:18px;font-weight:400;padding:0 2px;line-height:1}
+
+.wk{border:1px solid var(--bd);border-radius:16px;overflow:auto;background:var(--s1);min-width:640px}
+.wk-head,.wk-allday,.wk-body{display:grid;grid-template-columns:44px repeat(7,minmax(0,1fr))}
+.wk-head{background:var(--s2);position:sticky;top:0;z-index:3}.wk-hd{text-align:center;padding:8px 2px;font-size:12px;color:var(--tx2);border-left:1px solid var(--bd)}.wk-hd b{font-size:15px;color:var(--tx)}.wk-hd.today b{color:var(--ac)}
+.wk-allday{border-top:1px solid var(--bd);border-bottom:1px solid var(--bd)}.wk-ad{border-left:1px solid var(--bd);padding:3px;min-height:30px}.wk-ad .week-event{font-size:10.5px;padding:3px 5px;margin-bottom:3px}
+.wk-gut{display:flex;align-items:flex-start;justify-content:center;font-size:11px;color:var(--tx3);padding-top:6px}
+.wk-hours{flex-direction:column;align-items:stretch;padding:0}.wk-hours div{position:relative}.wk-hours span{position:absolute;top:-7px;right:6px;font-size:10.5px;color:var(--tx3)}.wk-hours div:first-child span{top:2px}
+.wk-col{position:relative;border-left:1px solid var(--bd)}.wk-col.today{background:rgba(108,99,255,.05)}.wk-line{position:absolute;left:0;right:0;border-top:1px solid var(--bd);opacity:.6}
+.wk-ev{position:absolute;margin:0;padding:3px 5px;overflow:hidden;font-size:10.5px;line-height:1.25;border-left-width:3px;border-radius:7px}
+.fac-cm.wk-ev{border-left-color:#3b82f6}.fac-ed.wk-ev{border-left-color:#10b981}.fac-tp.wk-ev{border-left-color:#f59e0b}.fac-exam.wk-ev{border-left-color:#ef4444}
 </style>
 <div id="pwaBar"></div>
 <script>

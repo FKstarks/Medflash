@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v11.9-2026-10-07-2215">
+<meta name="app-build" content="v12.1-2026-10-08-0055">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -145,6 +145,8 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:14px 2
 .ans-no:hover{background:rgba(239,68,68,.22);transform:translateY(-2px)}
 .ans-yes{background:rgba(34,197,94,.12);color:var(--gr);border:1px solid rgba(34,197,94,.3)}
 .ans-yes:hover{background:rgba(34,197,94,.22);transform:translateY(-2px)}
+.ans-part{background:rgba(245,158,11,.12);color:var(--ye);border:1px solid rgba(245,158,11,.35)}
+.ans-part:hover{background:rgba(245,158,11,.22);transform:translateY(-2px)}
 .nav-btns{display:flex;gap:12px;margin-top:14px}
 .nav-btn{width:44px;height:44px;border-radius:13px;border:1px solid var(--bd);background:var(--s1);color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all .15s}
 .nav-btn:hover{border-color:var(--ac);color:var(--tx)}
@@ -669,6 +671,7 @@ body.logged-out #sLogin{position:static!important;top:auto!important}
         </div>
         <div class="ans-btns" id="ansBtns" style="display:none">
           <button class="ans-btn ans-no" onclick="answerCard(false)">✗ Je ne savais pas</button>
+          <button class="ans-btn ans-part" onclick="answerCard('partial')">🟡 En partie</button>
           <button class="ans-btn ans-yes" onclick="answerCard(true)">✓ Je savais !</button>
         </div>
         <div class="nav-btns">
@@ -1153,6 +1156,30 @@ function dueToday(deck){
   return (deck.plan||[]).some(function(e){return !e.done&&e.date===t;});
 }
 
+// Score de la révision du jour : chaque mode (moyenne de ses passages) puis combinaison pondérée
+// apprentissage 1 · révision 2 · évaluation 3. Une évaluation faite juste après apprentissage/révision est minorée (fraîcheur),
+// et un gros écart entre modes empêche de classer le cours « bien mémorisé ».
+function dayScore(deck,t,fallback){
+  var ss=(deck.sessions||[]).filter(function(x){return tsToStr(x.date)===t;});
+  if(!ss.length)return fallback;
+  var by={};
+  ss.forEach(function(x){
+    var m=x.mode==='classic'?'classic':x.mode==='learn'?'learn':x.mode==='eval'?'eval':'other';
+    var w=Math.max(1,x.total||0);by[m]=by[m]||{w:0,s:0};by[m].w+=w;by[m].s+=w*(x.score||0);
+  });
+  var sc={};Object.keys(by).forEach(function(m){sc[m]=by[m].s/by[m].w;});
+  var W={learn:1,classic:2,eval:3,other:2};
+  var other=sc.learn!==undefined||sc.classic!==undefined||sc.other!==undefined;
+  var ev0=sc.eval;
+  if(sc.eval!==undefined&&other)sc.eval=sc.eval*0.9;
+  var tw=0,ts=0;Object.keys(sc).forEach(function(m){tw+=W[m];ts+=W[m]*sc[m];});
+  var day=ts/tw;
+  if(ev0!==undefined&&other){
+    var best=Math.max(sc.learn||0,sc.classic||0,sc.other||0);
+    if(Math.abs(best-ev0)>=35)day=Math.min(day,TH_GOOD-1);
+  }
+  return Math.round(day);
+}
 // Solidité d'un cours : fragile = peu de révisions, scores faibles ou réapprentissage
 function deckFragile(deck){
   var dn=(deck.plan||[]).filter(function(e){return e.done&&typeof e.score==='number';});
@@ -1161,49 +1188,59 @@ function deckFragile(deck){
   var l=dn.slice(-3),avg=l.reduce(function(a,e){return a+e.score;},0)/l.length;
   return avg<55;
 }
-// Retard : décale les J suivants ; si ça dépasse l'examen, resserre les écarts (puis retire en dernier recours)
-function fitPlanAfterDelay(deck,entry,oldDate,lateBy,t){
-  var f=folderOf(deck),exam=f&&f.examDate?f.examDate:null,L=exam?addDays(exam,-1):null;
-  var base=tsToStr(deck.createdAt);
-  var pend=deck.plan.filter(function(e){return !e.done&&e!==entry&&e.date>oldDate;});
-  sortPlan(pend);
+// Place des révisions à venir (pend) à des dates souhaitées (nd) : décale ou, si ça dépasse l'examen, resserre
+function fitPending(deck,pend,nd,t){
   if(!pend.length)return;
-  var nd=pend.map(function(e){return addDays(e.date,lateBy);});
-  var note='';
-  if(!L||nd[nd.length-1]<=L){
-    pend.forEach(function(e,k){e.date=nd[k];});
-  } else {
-    var tm=addDays(t,1),start=deckFragile(deck)?tm:(nd[0]<L?nd[0]:L);if(start<tm)start=tm;
-    if(L<tm){ // plus de place avant l'examen
-      deck.plan=deck.plan.filter(function(e){return pend.indexOf(e)<0;});
-      note='plus de place avant l\'examen : '+pend.length+' révision(s) retirée(s)';
-      pend=[];
+  var f=folderOf(deck),exam=f&&f.examDate?f.examDate:null,L=exam?addDays(exam,-1):null;
+  var base=tsToStr(deck.createdAt),note='';
+  var order=pend.map(function(e,k){return {e:e,d:nd[k]};}).sort(function(a,b){return a.d<b.d?-1:a.d>b.d?1:0;});
+  pend=order.map(function(o){return o.e;});nd=order.map(function(o){return o.d;});
+  var n=pend.length,p=0;
+  if(L)while(p<n&&nd[p]<=L)p++;else p=n;
+  pend.forEach(function(e,k){e.date=nd[k];});          // 1) simple décalage
+  if(p<n){                                              // 2) certaines révisions dépassent l'examen
+    var frag=deckFragile(deck),g=frag?1:2,tm=addDays(t,1),placed=false;
+    if(L<tm){
+      var rm0=pend.slice(p);
+      deck.plan=deck.plan.filter(function(e){return rm0.indexOf(e)<0;});
+      pend=pend.slice(0,p);
+      note='plus de place avant l\'examen : '+rm0.length+' révision(s) retirée(s)';
     } else {
-      var g=deckFragile(deck)?1:2,W=diffDays(start,L),slots=Math.floor(W/g)+1,n=pend.length,keep=pend,dates;
-      if(n>slots){
-        // trop de révisions pour la place restante : on garde les mieux réparties (toujours la dernière)
-        keep=[];for(var q=0;q<slots;q++)keep.push(pend[slots===1?n-1:Math.round(q*(n-1)/(slots-1))]);
+      // on resserre d'abord seulement la fin ; si ça ne tient pas, on remonte plus tôt dans le planning
+      for(var q=p;q>=0&&!placed;q--){
+        var start=q>0?addDays(nd[q-1],g):(frag?tm:(nd[0]<L?nd[0]:L));
+        if(start<tm)start=tm;
+        var cnt=n-q,W=diffDays(start,L);
+        if(W<0||W<(cnt-1)*g)continue;
+        var first=nd[q],span=Math.max(1,diffDays(first,nd[n-1])),ds=[];
+        for(var x=q;x<n;x++)ds.push(addDays(start,Math.round(diffDays(first,nd[x])*W/span)));
+        ds[ds.length-1]=L;
+        for(var a=1;a<ds.length;a++){if(diffDays(ds[a-1],ds[a])<g)ds[a]=addDays(ds[a-1],g);}
+        for(var b=ds.length-2;b>=0;b--){if(diffDays(ds[b],ds[b+1])<g)ds[b]=addDays(ds[b+1],-g);}
+        for(var y=0;y<ds.length;y++)pend[q+y].date=ds[y];
+        placed=true;note='écarts resserrés pour tenir avant l\'examen';
+      }
+      if(!placed){
+        // vraiment plus assez de jours : on garde les révisions les mieux réparties (toujours la dernière)
+        var st0=frag?tm:(nd[0]<L?nd[0]:L);if(st0<tm)st0=tm;
+        var W0=diffDays(st0,L),slots=Math.floor(W0/g)+1,keep=[];
+        for(var z=0;z<slots;z++)keep.push(pend[slots===1?n-1:Math.round(z*(n-1)/(slots-1))]);
         var rm=pend.filter(function(e){return keep.indexOf(e)<0;});
         deck.plan=deck.plan.filter(function(e){return rm.indexOf(e)<0;});
-        note=rm.length+' révision(s) retirée(s) (plus assez de jours)';
-      } else note='écarts resserrés pour tenir avant l\'examen';
-      var k=keep.length,first=nd[pend.indexOf(keep[0])],last=nd[pend.indexOf(keep[k-1])];
-      if(first<start)first=start;
-      var span=Math.max(1,diffDays(first,last));
-      dates=keep.map(function(e,x){
-        var d0=nd[pend.indexOf(e)];if(d0<first)d0=first;
-        return addDays(start,Math.round(diffDays(first,d0)*W/span));
-      });
-      dates[k-1]=L;
-      for(var a=1;a<k;a++){if(diffDays(dates[a-1],dates[a])<g)dates[a]=addDays(dates[a-1],g);}
-      for(var b=k-2;b>=0;b--){if(diffDays(dates[b],dates[b+1])<g)dates[b]=addDays(dates[b+1],-g);}
-      keep.forEach(function(e,x){e.date=dates[x];});
+        keep.forEach(function(e,z2){e.date=slots===1?L:addDays(st0,Math.round(z2*W0/(slots-1)));});
+        pend=keep;note=rm.length+' révision(s) retirée(s) (plus assez de jours)';
+      }
     }
   }
-  // numérotation des J = jours depuis la création
-  if(base)deck.plan.forEach(function(e){if(!e.done&&e.date>oldDate)e.off=diffDays(base,e.date);});
+  if(base)pend.forEach(function(e){e.off=diffDays(base,e.date);});
   var seen={};deck.plan=deck.plan.filter(function(e){if(e.done)return true;if(seen[e.date])return false;seen[e.date]=1;return true;});
   if(note){try{var nm=deck.name;setTimeout(function(){toast('🗓️ '+nm+' : '+note);},1800);}catch(_){}}
+}
+// Retard : chaque J suivant garde son écart avec la révision qu'on vient de faire (ancré sur aujourd'hui)
+function fitPlanAfterDelay(deck,entry,oldDate,lateBy,t){
+  var pend=deck.plan.filter(function(e){return !e.done&&e!==entry&&e.date>oldDate;});
+  sortPlan(pend);
+  fitPending(deck,pend,pend.map(function(e){return addDays(e.date,lateBy);}),t);
 }
 
 // Marque une échéance comme faite + adapte la suite
@@ -1229,7 +1266,13 @@ function completeEntry(deck,score,entryId){
   }
   var lateBy=Math.max(0,diffDays(entry.date,t));
   var wasDone=!!entry.done,oldDate=entry.date;
-  entry.done=true;entry.doneDate=t;entry.score=score;entry.lateBy=lateBy;
+  // plusieurs sessions le même jour = UNE révision : score du jour = moyenne des sessions (pondérée par le nb de cartes)
+  score=dayScore(deck,t,score);
+  if(wasDone){ // 2e session du jour : on annule l'adaptation précédente avant de recalculer
+    deck.plan=deck.plan.filter(function(e){return !(!e.done&&e.adaptOn===t);});
+    deck.plan.forEach(function(e){if(e.movedOn===t&&e.prevDate){e.date=e.prevDate;delete e.prevDate;delete e.movedOn;}});
+  }
+  entry.done=true;entry.doneDate=t;entry.score=score;if(!wasDone)entry.lateBy=lateBy;
   if(!wasDone&&lateBy>0){fitPlanAfterDelay(deck,entry,oldDate,lateBy,t);}
   try{pushRev(folderOf(deck),deck,entry,t);}catch(e){console.error(e);}
   adaptPlan(deck,score,t);
@@ -1251,7 +1294,7 @@ function adaptPlan(deck,score,fromStr){
     if(!fits(ds))return;
     if(deck.plan.some(function(e){return e.date===ds&&!e.done;}))return;
     var off=diffDays(tsToStr(deck.createdAt)||fromStr,ds);
-    deck.plan.push(mkEntry(off,ds,type));
+    var ne=mkEntry(off,ds,type);ne.adaptOn=fromStr;deck.plan.push(ne);
   };
   var pend=planPending(deck);sortPlan(pend);
   var nxt=pend.length?pend[0]:null;
@@ -1268,7 +1311,7 @@ function adaptPlan(deck,score,fromStr){
     // on décale l'échéance normale si elle tombe dans le sprint
     if(nxt&&diffDays(fromStr,nxt.date)<=9&&nxt.type==='normal'){
       var nd=addDays(fromStr,12);
-      if(fits(nd))nxt.date=nd;
+      if(fits(nd)){nxt.prevDate=nxt.date;nxt.movedOn=fromStr;nxt.date=nd;}
     }
     return;
   }
@@ -1291,14 +1334,20 @@ function regenPlan(deck,fromTodayIfLate){
   var done=(deck.plan||[]).filter(function(e){return e.done;});
   var start=tsToStr(deck.createdAt)||today();
   var t=today();
-  var baseStart=(fromTodayIfLate&&start<t)?start:start;
-  var fresh=buildPlan(baseStart,exam);
-  // on ne garde que les échéances futures (> aujourd'hui) ou du jour, non déjà faites
-  var kept=fresh.filter(function(e){
-    if(e.date<t)return false;
-    return !done.some(function(d){return d.date===e.date;});
-  });
-  deck.plan=done.concat(kept);
+  var fresh=buildPlan(start,exam);
+  var last=null;
+  done.forEach(function(e){if(e.doneDate&&(!last||e.doneDate>=last.doneDate))last=e;});
+  var kept,nd;
+  if(last){
+    // on repart de la dernière révision réellement faite : mêmes écarts entre les J qu'au départ
+    kept=fresh.filter(function(e){return e.off>last.off;});
+    nd=kept.map(function(e){return addDays(last.doneDate,e.off-last.off);});
+    deck.plan=done.concat(kept);
+    fitPending(deck,kept,nd,t);
+  } else {
+    kept=fresh.filter(function(e){return e.date>=t;});
+    deck.plan=done.concat(kept);
+  }
   sortPlan(deck.plan);
 }
 
@@ -1696,7 +1745,8 @@ function deckStatus(d){
   var done=plan.filter(function(e){return e.done;});
   var total=plan.length;
   var sess=d.sessions||[];
-  var lastScore=sess.length?sess[sess.length-1].score:null;
+  var _ld=null;done.forEach(function(e){if(typeof e.score==='number'&&(!_ld||(e.doneDate||'')>=(_ld.doneDate||'')))_ld=e;});
+  var lastScore=_ld?_ld.score:(sess.length?sess[sess.length-1].score:null);
   var nxt=nextEntry(d);
   var late=lateEntries(d);
   var pct,cls,bcls,btxt,label;
@@ -1907,7 +1957,7 @@ function isHard(c){
 // ════════════════════════════════════════
 // STUDY — révision classique
 // ════════════════════════════════════════
-var ST={cards:[],idx:0,flipped:false,results:{},writes:{},filter:'order',writeMode:false,strict:false,reverse:false,remed:false,remedIds:[],remedLow:false};
+var ST={cards:[],idx:0,flipped:false,results:{},first:{},writes:{},filter:'order',writeMode:false,strict:false,reverse:false,remed:false,remedIds:[],remedLow:false};
 
 function studyEntry(){
   if(!CUR.deck)return;
@@ -1935,7 +1985,7 @@ function resumeStudy(){
   if(!cards.length){startStudy();return;}
   ST.cards=cards;
   ST.idx=Math.min(p.idx,cards.length-1);
-  ST.results=p.results||{};
+  ST.results=p.results||{};ST.first=p.first||p.results||{};
   ST.writes=p.writes||{};
   ST.filter=p.filter||'order';
   ST.writeMode=!!p.writeMode;
@@ -1960,7 +2010,7 @@ function progSaveStudy(){
   if(!started)return;
   progSave('study',{
     order:ST.cards.map(function(c){return c.id;}),
-    idx:ST.idx,results:ST.results,writes:ST.writes,
+    idx:ST.idx,results:ST.results,first:ST.first,writes:ST.writes,
     filter:ST.filter,writeMode:ST.writeMode,strict:ST.strict,reverse:ST.reverse,
     remed:ST.remed,remedIds:ST.remedIds,remedLow:ST.remedLow
   });
@@ -1971,7 +2021,7 @@ function startStudy(){
   ST.remed=false;
   ST.flipped=false;ST.idx=0;
   var cards=CUR.deck.cards||[];
-  if(ST.filter==='shuffle'){ST.results={};ST.writes={};ST.cards=shuffle(cards.slice());}
+  if(ST.filter==='shuffle'){ST.results={};ST.first={};ST.reQ={};ST.writes={};ST.cards=shuffle(cards.slice());}
   else if(ST.filter==='failed'){
     var failed=cards.filter(function(c){return ST.results[c.id]===false;});
     ST.cards=failed.length?failed:cards.slice();
@@ -1980,11 +2030,11 @@ function startStudy(){
   }
   else if(ST.filter==='hard'){
     var hard=cards.filter(isHard);
-    ST.results={};ST.writes={};
+    ST.results={};ST.first={};ST.reQ={};ST.writes={};
     ST.cards=hard.length?hard:cards.slice();
     if(!hard.length)toast('Aucune carte difficile repérée — toutes les cartes affichées');
   }
-  else {ST.results={};ST.writes={};ST.cards=cards.slice();}
+  else {ST.results={};ST.first={};ST.reQ={};ST.writes={};ST.cards=cards.slice();}
   document.getElementById('studyArea').style.display='block';
   document.getElementById('studyArea').innerHTML='';
   document.getElementById('studyResult').style.display='none';
@@ -2088,6 +2138,7 @@ function renderStudyCard(){
       '</div></div>'+
       '<div class="ans-btns" id="ansBtns" style="display:none">'+
         '<button class="ans-btn ans-no" onclick="answerCard(false)">✗ Je ne savais pas</button>'+
+        '<button class="ans-btn ans-part" onclick="answerCard(\'partial\')">🟡 En partie</button>'+
         '<button class="ans-btn ans-yes" onclick="answerCard(true)">✓ Je savais !</button>'+
       '</div>'+
       '<div class="nav-btns">'+
@@ -2133,8 +2184,15 @@ function flipCard(){
 function answerCard(knew){
   var card=ST.cards[ST.idx];
   if(card){
-    if(ST.results[card.id]===undefined)bumpCard(card.id,knew);
-    ST.results[card.id]=knew;
+    var val=(knew==='partial')?0.5:knew;
+    if(knew!=='partial'&&(ST.results[card.id]===undefined||ST.results[card.id]===0.5))bumpCard(card.id,knew);
+    ST.results[card.id]=val;
+    if(!ST.first)ST.first={};if(ST.first[card.id]===undefined)ST.first[card.id]=val;
+    // « en partie » : la carte revient quelques cartes plus loin (une seule fois), sans aller dans les ratées
+    if(knew==='partial'){
+      if(!ST.reQ)ST.reQ={};
+      if(!ST.reQ[card.id]){ST.reQ[card.id]=1;ST.cards.splice(Math.min(ST.idx+7,ST.cards.length),0,card);}
+    }
   }
   if(ST.idx<ST.cards.length-1){ST.idx++;
     if(ST.writeMode)document.getElementById('studyArea').innerHTML='';
@@ -2155,25 +2213,27 @@ function submitStudyWrite(id){
   var res=checkAnswer(ans,ST.reverse?card.question:card.answer,cardStrict(card,ST.strict));
   ST.writes[id]={done:true,ok:res.ok,ans:ans,res:res};
   ST.results[id]=res.ok;
+  if(!ST.first)ST.first={};if(ST.first[id]===undefined)ST.first[id]=res.ok;
   bumpCard(id,res.ok);
   renderStudyCard();
 }
 function skipStudyWrite(id){
   if(!ST.writes)ST.writes={};
   ST.writes[id]={done:true,ok:false,ans:'',res:null};
-  ST.results[id]=false;bumpCard(id,false);
+  ST.results[id]=false;if(!ST.first)ST.first={};if(ST.first[id]===undefined)ST.first[id]=false;bumpCard(id,false);
   renderStudyCard();
 }
 function overrideStudyOk(id){
-  if(ST.writes&&ST.writes[id]){if(!ST.writes[id].ok)fixFail(id);ST.writes[id].ok=true;ST.results[id]=true;}
+  if(ST.writes&&ST.writes[id]){if(!ST.writes[id].ok)fixFail(id);ST.writes[id].ok=true;ST.results[id]=true;if(!ST.first)ST.first={};ST.first[id]=true;}
   renderStudyCard();
 }
 
+function rv(v){return v===true?1:(typeof v==='number'?v:0);}
 function scorePct(resultsObj){
   var keys=Object.keys(resultsObj);
   if(!keys.length)return 0;
-  var yes=keys.filter(function(k){return resultsObj[k];}).length;
-  return Math.round(yes/keys.length*100);
+  var pts=keys.reduce(function(a,k){return a+rv(resultsObj[k]);},0);
+  return Math.round(pts/keys.length*100);
 }
 
 function verdictBox(pct,deck){
@@ -2199,17 +2259,20 @@ function showStudyResult(){
   var box=document.getElementById('studyResult');
   box.style.display='block';
   if(ST.remed){box.innerHTML=remedResultHtml();return;}
-  var keys=Object.keys(ST.results);
-  var yes=keys.filter(function(k){return ST.results[k];}).length;
-  var no=keys.length-yes;
-  var pct=scorePct(ST.results);
+  var FR=(ST.first&&Object.keys(ST.first).length)?ST.first:ST.results;
+  var keys=Object.keys(FR);
+  var yes=keys.filter(function(k){return rv(FR[k])===1;}).length;
+  var part=keys.filter(function(k){return rv(FR[k])===0.5;}).length;
+  var no=keys.length-yes-part;
+  var pct=scorePct(FR);
   box.innerHTML='<div class="result-card">'+
     '<div class="r-em">'+(pct>=90?'🎉':pct>=70?'💪':pct>=50?'📖':'😅')+'</div>'+
     '<div class="r-title">'+(pct>=90?'Excellent !':pct>=70?'Bon travail !':pct>=50?'Continue !':'À retravailler')+'</div>'+
-    '<div class="r-sub">'+yes+' cartes maîtrisées sur '+keys.length+'</div>'+
+    '<div class="r-sub">'+yes+' cartes maîtrisées sur '+keys.length+' · premier passage</div>'+
     '<div class="stat-row">'+
       '<div class="stat-box"><div class="stat-n gr">'+yes+'</div><div class="stat-l">Savais</div></div>'+
       '<div class="stat-box"><div class="stat-n rd">'+no+'</div><div class="stat-l">Pas su</div></div>'+
+      (part?'<div class="stat-box"><div class="stat-n" style="color:var(--ye)">'+part+'</div><div class="stat-l">En partie</div></div>':'')+
       '<div class="stat-box"><div class="stat-n">'+pct+'%</div><div class="stat-l">Score</div></div>'+
     '</div>'+
     verdictBox(pct,CUR.deck)+loopBoxHtml(CUR.deck)+
@@ -2233,9 +2296,10 @@ function reviewFailed(){
 function saveSession(mode,pctOverride,yesOverride,totalOverride){
   if(!CUR.deck)return;
   var wasPending=activateDeck(CUR.deck); // J0 : le planning démarre aujourd'hui
-  var pct=pctOverride!==undefined?pctOverride:scorePct(ST.results);
-  var keys=Object.keys(ST.results);
-  var yes=yesOverride!==undefined?yesOverride:keys.filter(function(k){return ST.results[k];}).length;
+  var FR=(mode==='classic'&&ST.first&&Object.keys(ST.first).length)?ST.first:ST.results;
+  var pct=pctOverride!==undefined?pctOverride:scorePct(FR);
+  var keys=Object.keys(FR);
+  var yes=yesOverride!==undefined?yesOverride:keys.filter(function(k){return FR[k];}).length;
   var total=totalOverride!==undefined?totalOverride:keys.length;
   if(!CUR.deck.sessions)CUR.deck.sessions=[];
   CUR.deck.sessions.push({date:Date.now(),score:pct,yes:yes,total:total,mode:mode});
@@ -2265,7 +2329,7 @@ function saveSession(mode,pctOverride,yesOverride,totalOverride){
 // ════════════════════════════════════════
 // APPRENTISSAGE — choix souple / strict
 // ════════════════════════════════════════
-var LRN={queue:[],qi:0,series:[],snum:0,si:0,results:{},writes:{},strict:false};
+var LRN={queue:[],qi:0,series:[],snum:0,si:0,results:{},first:{},writes:{},strict:false};
 
 function learnHome(){
   if(!CUR.deck)return;
@@ -2329,7 +2393,7 @@ function resumeLearn(){
   LRN.strict=!!p.strict;
   LRN.queue=queue;
   LRN.qi=Math.min(p.qi,queue.length);
-  LRN.results=p.results||{};
+  LRN.results=p.results||{};LRN.first=p.first||p.results||{};
   LRN.writes=p.writes||{};
   if(LRN.qi>=queue.length){renderLrnFinal();return;}
   var item=queue[LRN.qi];
@@ -2345,7 +2409,7 @@ function progSaveLearn(){
   progSave('learn',{
     strict:LRN.strict,
     queue:LRN.queue.map(function(item){return {type:item.type,num:item.num,ids:item.s.cards.map(function(c){return c.id;})};}),
-    qi:LRN.qi,si:LRN.si,results:LRN.results,writes:LRN.writes
+    qi:LRN.qi,si:LRN.si,results:LRN.results,first:LRN.first,writes:LRN.writes
   });
 }
 
@@ -2354,7 +2418,7 @@ function startLearn(strict){
   if(strict!==undefined)LRN.strict=!!strict;
   var cards=CUR.deck.cards||[];
   if(!cards.length){learnHome();return;}
-  LRN.results={};LRN.writes={};
+  LRN.results={};LRN.first={};LRN.writes={};
   var ordered=cards.slice();
   var sz=3,series=[];
   for(var i=0;i<ordered.length;i+=sz)series.push({cards:ordered.slice(i,i+sz),num:Math.floor(i/sz)});
@@ -2459,21 +2523,22 @@ function submitWrite(id){
   if(!card)return;
   var res=checkAnswer(ans,card.answer,cardStrict(card,LRN.strict));
   LRN.writes[id]={done:true,ok:res.ok,ans:ans,res:res};
-  LRN.results[id]=res.ok;
+  LRN.results[id]=res.ok;if(!LRN.first)LRN.first={};if(LRN.first[id]===undefined)LRN.first[id]=res.ok;
   bumpCard(id,res.ok);
   renderLrnWrite();
 }
-function overrideOk(id){if(LRN.writes[id]){if(!LRN.writes[id].ok)fixFail(id);LRN.writes[id].ok=true;LRN.results[id]=true;}renderLrnWrite();}
-function skipWrite(id){LRN.writes[id]={done:true,ok:false,ans:'',res:null};LRN.results[id]=false;bumpCard(id,false);renderLrnWrite();}
+function overrideOk(id){if(LRN.writes[id]){if(!LRN.writes[id].ok)fixFail(id);LRN.writes[id].ok=true;LRN.results[id]=true;if(!LRN.first)LRN.first={};LRN.first[id]=true;}renderLrnWrite();}
+function skipWrite(id){LRN.writes[id]={done:true,ok:false,ans:'',res:null};LRN.results[id]=false;if(!LRN.first)LRN.first={};if(LRN.first[id]===undefined)LRN.first[id]=false;bumpCard(id,false);renderLrnWrite();}
 function lrnWriteNext(){LRN.si++;if(LRN.si>=LRN.series.length){LRN.qi++;processLrn();}else renderLrnWrite();}
 
 function renderLrnFinal(){
   progClear('learn');
-  var tot=Object.keys(LRN.results).length;
-  var yes=Object.values(LRN.results).filter(function(v){return v;}).length;
+  var LF=(LRN.first&&Object.keys(LRN.first).length)?LRN.first:LRN.results;
+  var tot=Object.keys(LF).length;
+  var yes=Object.values(LF).filter(function(v){return v;}).length;
   var pct=tot?Math.round(yes/tot*100):0;
   ST.results={};
-  Object.keys(LRN.results).forEach(function(k){ST.results[k]=LRN.results[k];});
+  Object.keys(LF).forEach(function(k){ST.results[k]=LF[k];});
   document.getElementById('learnArea').innerHTML=
     '<div class="result-card">'+
     '<div class="r-em">'+(pct>=90?'🎉':pct>=70?'💪':pct>=50?'📖':'😅')+'</div>'+
@@ -2701,7 +2766,7 @@ function renderEvalQ(){
   document.getElementById(EV.target).innerHTML=
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">'+
     '<span style="font-size:13px;color:var(--tx2)">Question '+(done+1)+' / '+tot+'</span>'+
-    '<span style="font-size:13px;color:var(--tx2)">Score : '+EV.results.filter(function(r){return r.ok;}).length+' / '+EV.results.length+'</span></div>'+
+    '<span style="font-size:13px;color:var(--tx2)">Score : '+String(Math.round(evSum(EV.results)*10)/10).replace('.',',')+' / '+EV.results.length+'</span></div>'+
     progBar(done,tot,'var(--ac),var(--ac2)')+
     '<div class="qcard">'+
     (q.src?'<div class="q-src">📘 '+esc(q.src)+'</div>':'')+
@@ -2740,16 +2805,20 @@ function submitQ(){
     else if(oSet.has(i)){el.className='qopt locked q-miss';el.querySelector('.qcheck').textContent='→';}
     var tg=document.createElement('span');tg.textContent=oSet.has(i)?'VRAI':'FAUX';tg.style.cssText='margin-left:auto;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;white-space:nowrap;color:#fff;background:'+(oSet.has(i)?'var(--gr)':'var(--rd)');el.appendChild(tg);
   });
+  var _err=0;for(var _i=0;_i<q.opts.length;_i++){if(sSet.has(_i)!==oSet.has(_i))_err++;}
+  var _pts=_err===0?1:_err===1?0.5:_err===2?0.2:0;
   var okL=okIdxs.map(function(i){return L[i];}).join(', ');
   var refText=q.explanation?esc(q.explanation):(q.card?esc(q.card.answer.replace(/\*\*/g,'').slice(0,150)):'');
   var fb=document.getElementById('qfb');
   fb.className='qfb show '+(correct?'ok':'ko');
-  fb.innerHTML=correct?'<strong>✓ Correct !</strong> Bonne(s) : '+okL:'<strong>✗ Incorrect.</strong> Bonne(s) : <strong>'+okL+'</strong>'+(refText?'<br><small style="color:var(--tx3)">Réf : '+refText+'</small>':'');
-  EV.results.push({ok:correct,deckId:q.deckId||null});
+  fb.innerHTML=correct?'<strong>✓ Correct !</strong> Bonne(s) : '+okL:'<strong>✗ '+(String(_pts).replace('.',','))+' pt</strong> ('+_err+' erreur'+(_err>1?'s':'')+') · Bonne(s) : <strong>'+okL+'</strong>'+(refText?'<br><small style="color:var(--tx3)">Réf : '+refText+'</small>':'');
+  EV.results.push({ok:correct,pts:_pts,deckId:q.deckId||null});
   if(EV.scope==='deck'&&q.card){ST.results[q.card.id]=correct;bumpCard(q.card.id,correct);}
   document.getElementById('qsub').innerHTML='<button class="btn btn-primary" onclick="nextQ()">'+(EV.qi<EV.qs.length-1?'Suivant →':'Voir les résultats')+'</button>';
   evProgSave();
 }
+function evPts(r){return r?(typeof r.pts==='number'?r.pts:(r.ok?1:0)):0;}
+function evSum(a){return a.reduce(function(x,r){return x+evPts(r);},0);}
 function nextQ(){EV.qi++;evProgSave();renderEvalQ();}
 
 // ════════════════════════════════════════
@@ -2878,7 +2947,7 @@ function remedRetryFailed(){
 function renderEvalFinal(){
   progClear('eval');
   var tot=EV.qs.length,yes=EV.results.filter(function(r){return r.ok;}).length;
-  var pct=Math.round(yes/tot*100);
+  var pct=Math.round(evSum(EV.results)/tot*100);
   var R=computeRemed();EV.remed={ids:R.ids,pct:pct};
   document.getElementById('evalArea').innerHTML=
     '<div class="result-card">'+
@@ -2992,19 +3061,19 @@ function startExam(n){
 function renderExamFinal(){
   examProgClear();
   var tot=EV.qs.length,yes=EV.results.filter(function(r){return r.ok;}).length;
-  var pct=Math.round(yes/tot*100);
+  var pct=Math.round(evSum(EV.results)/tot*100);
   // score par cours
   var per={};
   EV.results.forEach(function(r,i){
     var id=EV.qs[i].deckId,nm=EV.qs[i].src;
     if(!per[id])per[id]={name:nm,ok:0,tot:0};
-    per[id].tot++;if(r.ok)per[id].ok++;
+    per[id].tot++;per[id].ok+=evPts(r);
   });
   var rows=Object.keys(per).map(function(k){
     var p=per[k],sc=Math.round(p.ok/p.tot*100);
     var col=sc>=70?'var(--gr)':sc>=45?'var(--ye)':'var(--rd)';
     return '<div class="plan-row"><div class="plan-d">'+esc(p.name)+'</div>'+
-      '<div style="font-size:12px;color:var(--tx3)">'+p.ok+'/'+p.tot+'</div>'+
+      '<div style="font-size:12px;color:var(--tx3)">'+String(Math.round(p.ok*10)/10).replace('.',',')+'/'+p.tot+'</div>'+
       '<div class="plan-sc" style="color:'+col+'">'+sc+'%</div></div>';
   }).join('');
   var weak=Object.keys(per).filter(function(k){return per[k].ok/per[k].tot<0.5;}).map(function(k){return per[k].name;});

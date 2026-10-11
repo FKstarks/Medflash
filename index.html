@@ -3553,18 +3553,19 @@ function autoImport(manual){
   }
   try{localStorage.setItem('mf_auto_ts',String(Date.now()));}catch(e){}
   AUTO_BUSY=true;
-  var n=0,ko=0;
+  var n=0,ko=0,errs=[];
   if(manual)toast('Recherche de nouveaux cours…');
   flushDone();
   return suiviCall('sync',{d:mfDeckList()}).then(function(r){
     return (r.inbox||[]).reduce(function(pr,it){
-      return pr.then(function(){return autoTake(it);}).then(function(ok){if(ok)n++;},function(e){ko++;console.warn('import auto',e);});
+      return pr.then(function(){return autoTake(it).catch(function(){return new Promise(function(r){setTimeout(r,2500);}).then(function(){return autoTake(it);});});}).then(function(ok){if(ok)n++;},function(e){ko++;errs.push('« '+it.t+' » : '+((e&&e.message)||e));console.warn('import auto',it,e);});
     },Promise.resolve());
   }).then(function(){
     if(n){
       toast('📥 '+n+' nouveau'+(n>1?'x':'')+' cours ajouté'+(n>1?'s':'')+' (à démarrer)'+(ko?' · '+ko+' en échec':''));
+      if(ko)setTimeout(function(){toast('Échec — '+errs[0]);},3800);
       try{renderHome();if(CUR.folder&&!CUR.deck)renderFolder();}catch(e){}
-    } else if(manual){toast(ko?'Import impossible pour '+ko+' cours — réessaie plus tard':'Aucun nouveau cours pour le moment');}
+    } else if(manual){toast(ko?'Échec ('+ko+') — '+errs[0]:'Aucun nouveau cours pour le moment');}
   }).catch(function(e){
     console.warn('import auto',e);
     if(manual)toast('Import automatique impossible — vérifie le lien du Suivi et la clé EDIT');

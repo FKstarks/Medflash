@@ -3572,6 +3572,9 @@ function autoImport(manual){
 }
 window.autoImport=autoImport;
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&D.folders.length)autoImport(false);});
+// L'appli installée reste souvent ouverte en arrière-plan : on revérifie aussi au retour sur la fenêtre et toutes les 10 minutes
+window.addEventListener('focus',function(){if(D.folders.length)autoImport(false);});
+setInterval(function(){if(D.folders.length&&document.visibilityState==='visible')autoImport(false);},10*60000);
 // « Appris » coché tout seul dans le Suivi quand le J0 d'un cours importé automatiquement est validé
 function pushDone(sid){
   var q=[];try{q=JSON.parse(localStorage.getItem('mf_done_q')||'[]');}catch(e){}

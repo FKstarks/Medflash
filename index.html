@@ -228,6 +228,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:14px 2
 .qopt.q-ko{border-color:var(--rd)!important;background:rgba(239,68,68,.1)!important;color:var(--rd)}
 .qopt.q-miss{border-color:var(--ye)!important;background:rgba(245,158,11,.08)!important}
 .qopt.locked{cursor:default}
+.qcorr{margin:-4px 0 2px 28px;padding:9px 13px;border-left:3px solid var(--gr);border-radius:0 10px 10px 0;background:rgba(34,197,94,.09);font-size:13px;line-height:1.5;color:var(--tx)}
 .qletter{font-weight:700;font-size:13px;min-width:22px;color:var(--tx3)}
 .qcheck{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--bd);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;transition:all .15s}
 .qopt.sel .qcheck{background:var(--ac);border-color:var(--ac);color:#fff}
@@ -2642,7 +2643,7 @@ function startEval(){
     // On mélange l'ordre des questions ET l'ordre des propositions à chaque tentative,
     // pour éviter d'apprendre "la 2e réponse" par cœur au lieu du fond.
     EV.qs=shuffle(series[idx].slice()).map(function(q){
-      return{stem:q.q,explanation:q.explanation||null,refs:q.refs||null,opts:shuffle(q.opts.map(function(o){return{t:o.t,ok:o.ok};}))};
+      return{stem:q.q,explanation:q.explanation||null,refs:q.refs||null,opts:shuffle(q.opts.map(function(o){return o.x?{t:o.t,ok:o.ok,x:o.x}:{t:o.t,ok:o.ok};}))};
     });
     EV.qi=0;EV.results=[];ST.results={};
     renderEvalQ();
@@ -2670,6 +2671,9 @@ function parseQSeries(raw){
       lines.forEach(function(l){
         var m=l.match(optRe);
         if(!m&&opts.length){
+          // « Correction : … » sous une proposition fausse = la version exacte, affichée à la correction
+          var xm=l.match(/^(?:→|->|=>|>)?\s*(?:correction|corrig[ée])\s*[:：]\s*(.+)$/i);
+          if(xm){var lo=opts[opts.length-1];if(lo&&!lo.ok)lo.x=xm[1].trim();return;}
           var cm=l.match(/^cartes?\s*[:：]\s*(.+)$/i);
           if(cm)refs=refs.concat(cm[1].split('|').map(function(x){return x.replace(/\*\*/g,'').trim();}).filter(Boolean));
           return;
@@ -2811,6 +2815,9 @@ function submitQ(){
     else if(sSet.has(i)&&!oSet.has(i)){el.className='qopt locked q-ko';el.querySelector('.qcheck').textContent='✗';}
     else if(oSet.has(i)){el.className='qopt locked q-miss';el.querySelector('.qcheck').textContent='→';}
     var tg=document.createElement('span');tg.textContent=oSet.has(i)?'VRAI':'FAUX';tg.style.cssText='margin-left:auto;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;white-space:nowrap;color:#fff;background:'+(oSet.has(i)?'var(--gr)':'var(--rd)');el.appendChild(tg);
+    if(!oSet.has(i)&&q.opts[i]&&q.opts[i].x){
+      el.insertAdjacentHTML('afterend','<div class="qcorr"><b>Correction :</b> '+fmt(q.opts[i].x)+'</div>');
+    }
   });
   var _err=0;for(var _i=0;_i<q.opts.length;_i++){if(sSet.has(_i)!==oSet.has(_i))_err++;}
   var _pts=_err===0?1:_err===1?0.5:_err===2?0.2:0;

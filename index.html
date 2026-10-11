@@ -3549,6 +3549,23 @@ function autoTake(it){
     return suiviCall('imp',{g:it.g}).then(function(){return true;},function(){return true;});
   });
 }
+function autoTakeQ(it){
+  var deck=null;
+  D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){if(d.sid===it.id)deck=d;});});
+  if(!deck)return suiviCall('impq',{g:it.g}).then(function(){return false;});
+  return suiviCall('takeq',{g:it.g}).then(function(c){
+    var saveQ=QIMP;QIMP={rej:0,noOk:0};
+    var series=c.qcm?parseQSeries(String(c.qcm).trim()):[];
+    QIMP=saveQ;
+    var nOld=(deck.qSeries||[]).reduce(function(a,s){return a+s.length;},0),nNew=series.reduce(function(a,s){return a+s.length;},0);
+    var hasX=series.some(function(s){return s.some(function(q){return q.opts.some(function(o){return o.x;});});});
+    // garde-fou : on ne remplace que si le nouveau fichier est complet (au moins autant de questions) et contient des corrections
+    if(!series.length||!hasX||nNew<nOld)throw new Error('QCM corrigés incomplets pour « '+it.t+' »');
+    deck.qSeries=series;
+    dbSave();
+    return suiviCall('impq',{g:it.g}).then(function(){return true;},function(){return true;});
+  });
+}
 function autoImport(manual){
   var cfg=suiviCfg();
   if(!cfg.url||!cfg.key){if(manual)toast('Configure d\'abord la connexion au Suivi (clé EDIT)');return Promise.resolve(0);}
@@ -3563,15 +3580,23 @@ function autoImport(manual){
   var n=0,ko=0,errs=[];
   if(manual)toast('Recherche de nouveaux cours…');
   flushDone();
+  var nq=0;
   return suiviCall('sync',{d:mfDeckList()}).then(function(r){
+    var upd=r.upd||[];
     return (r.inbox||[]).reduce(function(pr,it){
       return pr.then(function(){return autoTake(it).catch(function(){return new Promise(function(r){setTimeout(r,2500);}).then(function(){return autoTake(it);});});}).then(function(ok){if(ok)n++;},function(e){ko++;errs.push('« '+it.t+' » : '+((e&&e.message)||e));console.warn('import auto',it,e);});
-    },Promise.resolve());
+    },Promise.resolve()).then(function(){
+      // QCM repris avec les corrections des propositions fausses : on remplace les séries du cours, sans toucher au reste
+      return upd.reduce(function(pr,it){
+        return pr.then(function(){return autoTakeQ(it);}).then(function(ok){if(ok)nq++;},function(e){console.warn('maj QCM',it,e);});
+      },Promise.resolve());
+    });
   }).then(function(){
     if(n){
       toast('📥 '+n+' nouveau'+(n>1?'x':'')+' cours ajouté'+(n>1?'s':'')+' (à démarrer)'+(ko?' · '+ko+' en échec':''));
       if(ko)setTimeout(function(){toast('Échec — '+errs[0]);},3800);
       try{renderHome();if(CUR.folder&&!CUR.deck)renderFolder();}catch(e){}
+    } else if(nq){toast('✏️ QCM mis à jour avec les corrections : '+nq+' cours');
     } else if(manual){toast(ko?'Échec ('+ko+') — '+errs[0]:'Aucun nouveau cours pour le moment');}
   }).catch(function(e){
     console.warn('import auto',e);

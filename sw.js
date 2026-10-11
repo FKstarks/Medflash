@@ -7,7 +7,7 @@
    - API Firebase (auth / Firestore) -> JAMAIS mis en cache, Firestore gère sa propre persistance
    Incrémente VERSION à chaque déploiement pour forcer le rafraîchissement du cache.
 */
-const VERSION = 'medflash-v8';
+const VERSION = 'medflash-v9';
 const CORE_CACHE = VERSION + '-core';
 const RUNTIME_CACHE = VERSION + '-runtime';
 

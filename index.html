@@ -332,7 +332,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:14px 2
 @media(max-width:640px){
   nav{padding:12px 14px;gap:6px}.screen{padding:20px 14px}
   .ans-btns{flex-direction:column}.tabs{gap:2px}
-  .tab{font-size:11px;padding:8px 3px;min-width:60px}
+  .tab{font-size:11px;padding:8px 3px;min-width:30%}
   .home-title{font-size:24px}
   .cal-cell{min-height:62px;padding:4px;border-radius:10px}
   .cal-ev{font-size:9px;padding:1.5px 4px}
@@ -634,6 +634,7 @@ body.logged-out #sLogin{position:static!important;top:auto!important}
     <button class="tab" id="tab-eval" onclick="switchTab('eval')">📝 Évaluation</button>
     <button class="tab" id="tab-cards" onclick="switchTab('cards')">🃏 Cartes</button>
     <button class="tab" id="tab-stats" onclick="switchTab('stats')">📊 Planning</button>
+    <button class="tab" id="tab-fiche" onclick="switchTab('fiche')">📄 Fiche</button>
   </div>
 
   <!-- RÉVISION -->
@@ -705,6 +706,9 @@ body.logged-out #sLogin{position:static!important;top:auto!important}
 
   <!-- PLANNING / STATS -->
   <div id="tabStats" style="display:none"><div id="statsArea"></div></div>
+
+  <!-- FICHE DE COURS -->
+  <div id="tabFiche" style="display:none"><div id="ficheArea"></div></div>
 </div>
 
 <!-- CALENDRIER -->
@@ -1275,6 +1279,7 @@ function completeEntry(deck,score,entryId){
   entry.done=true;entry.doneDate=t;entry.score=score;if(!wasDone)entry.lateBy=lateBy;
   if(!wasDone&&lateBy>0){fitPlanAfterDelay(deck,entry,oldDate,lateBy,t);}
   try{pushRev(folderOf(deck),deck,entry,t);}catch(e){console.error(e);}
+  try{if(!wasDone&&entry.off===0&&deck.sid)pushDone(deck.sid);}catch(e){console.error(e);}
   adaptPlan(deck,score,t);
   sortPlan(deck.plan);
   return {score:score,lateBy:lateBy};
@@ -1789,7 +1794,7 @@ function openDeck(id){
 }
 
 function switchTab(tab){
-  ['study','learn','eval','cards','stats'].forEach(function(t){
+  ['study','learn','eval','cards','stats','fiche'].forEach(function(t){
     document.getElementById('tab-'+t).classList.toggle('active',t===tab);
     document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).style.display=t===tab?'block':'none';
   });
@@ -1798,6 +1803,7 @@ function switchTab(tab){
   if(tab==='eval')evalEntry();
   if(tab==='cards')renderCards();
   if(tab==='stats')renderStats();
+  if(tab==='fiche')renderFiche();
 }
 
 // ════════════════════════════════════════
@@ -1947,6 +1953,7 @@ function loopBoxHtml(deck){
   if(!L.length)return '';
   return '<div class="verdict v-bad"><b>🔁 '+L.length+' carte'+(L.length>1?'s':'')+' bloquée'+(L.length>1?'s':'')+' ('+STREAK_BAD+' échecs d\'affilée)</b>'+
     'Retourne à la fiche sur ce point, puis réessaie. Si elle reste confuse, réécris la carte.'+
+    (deck&&deck.hasFiche?'<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="goFiche()">📄 Ouvrir la fiche</button></div>':'')+
     L.slice(0,8).map(function(c){return '<div style="margin-top:8px;display:flex;gap:8px;align-items:center;justify-content:space-between"><span style="font-size:13px">'+esc(c.question.slice(0,90))+'</span><button class="btn btn-ghost" onclick="editCard(\''+c.id+'\')">✏️ Réécrire</button></div>';}).join('')+'</div>';
 }
 function isHard(c){
@@ -3328,7 +3335,7 @@ function saveSuiviCfg(){
 function renderSuivi(){
   var el=document.getElementById('suiviBody');if(!el)return;
   var d=suiviCache(),cfg=suiviCfg();
-  var head='<div class="panel-card" style="margin-bottom:16px"><div class="panel-head"><h3>🔗 Connexion au Suivi MED2'+(d&&d.r?' <span class="tag tag-soon" style="margin-left:6px">'+(d.r==='edit'?'modifiable':'lecture seule')+'</span>':'')+'</h3>'+(cfg.url?'<button class="btn btn-ghost btn-sm" onclick="syncSuivi(false)">🔄 Actualiser</button>':'')+'</div>'+
+  var head='<div class="panel-card" style="margin-bottom:16px"><div class="panel-head"><h3>🔗 Connexion au Suivi MED2'+(d&&d.r?' <span class="tag tag-soon" style="margin-left:6px">'+(d.r==='edit'?'modifiable':'lecture seule')+'</span>':'')+'</h3>'+(cfg.url?'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="autoImport(true)">📥 Nouveaux cours</button><button class="btn btn-ghost btn-sm" onclick="syncSuivi(false)">🔄 Actualiser</button></div>':'')+'</div>'+
     (cfg.url&&d&&d.ts?'<div style="font-size:12px;color:var(--tx2);margin-bottom:8px">Dernière synchro '+progAgoTxt(d.ts)+'</div>':'')+
     '<details'+(cfg.url?'':' open')+'><summary style="cursor:pointer;font-size:13px;color:var(--ac)">'+(cfg.url?'Modifier la connexion':'Configurer la connexion')+'</summary>'+
     '<div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">'+
@@ -3362,6 +3369,208 @@ function renderSuivi(){
   }).join('');
   var rv=(d.revHier||[]).length?'<div class="panel-card" style="margin-bottom:16px"><div class="panel-head"><h3>🧠 Révisions faites hier</h3></div><div class="suivi-list">'+d.revHier.map(function(c){return '<div class="suivi-row"><span>🧠</span><div class="sr-main"><div class="sr-title">'+esc(c.t)+'</div><div class="sr-sub">'+esc(c.s)+' · J'+c.j+'</div></div></div>';}).join('')+'</div></div>':'';
   el.innerHTML=head+stats+ag+rv+lp+subj;
+}
+
+
+// ════════════════════════════════════════
+// FICHE DE COURS (onglet « Fiche »)
+// La fiche est stockée à part (un document par cours) et chargée seulement à l'ouverture de l'onglet.
+// ════════════════════════════════════════
+var FICHE_CACHE={};
+function goFiche(){if(!CUR.deck)return;showScreen('sDeck');switchTab('fiche');}
+function loadFiche(id){
+  if(FICHE_CACHE[id])return Promise.resolve(FICHE_CACHE[id]);
+  if(!window.ficheStore)return Promise.resolve(null);
+  return window.ficheStore.get(id).then(function(f){if(f&&f.html)FICHE_CACHE[id]=f;return f;}).catch(function(e){console.warn('fiche',e);return null;});
+}
+function saveFicheData(id,html,rapport){
+  FICHE_CACHE[id]={html:html,rapport:rapport||''};
+  if(window.ficheStore)window.ficheStore.set(id,FICHE_CACHE[id]).catch(function(e){console.error(e);toast('⚠️ Fiche non enregistrée dans le cloud');});
+}
+function ficheImportBtn(has){
+  return '<label class="btn btn-ghost btn-sm" style="cursor:pointer">'+(has?'♻️ Remplacer':'📄 Importer une fiche (.html)')+
+    '<input type="file" accept=".html,.htm,text/html" style="display:none" onchange="importFicheFile(this)"></label>';
+}
+function renderFiche(){
+  var el=document.getElementById('ficheArea');if(!el||!CUR.deck)return;
+  var d=CUR.deck,id=d.id;
+  if(!d.hasFiche){
+    el.innerHTML='<div class="empty-soft"><div style="font-size:34px;margin-bottom:8px">📄</div><div style="margin-bottom:14px">Pas encore de fiche pour ce cours.</div>'+ficheImportBtn(false)+'</div>';
+    return;
+  }
+  el.innerHTML='<div class="empty-soft">Chargement de la fiche…</div>';
+  loadFiche(id).then(function(f){
+    if(!CUR.deck||CUR.deck.id!==id)return;
+    if(!f||!f.html){
+      el.innerHTML='<div class="empty-soft">Fiche indisponible sur cet appareil pour le moment (hors connexion ?). Réessaie une fois connecté.<div style="margin-top:14px">'+ficheImportBtn(true)+'</div></div>';
+      return;
+    }
+    var bar='<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-bottom:12px">'+
+      '<button class="btn btn-ghost btn-sm" onclick="openFicheFull()">↗ Plein écran / imprimer</button>'+ficheImportBtn(true)+
+      '<button class="btn btn-ghost btn-sm" onclick="delFiche()">🗑 Supprimer</button></div>';
+    var rap=f.rapport?'<details class="panel-card" style="margin-bottom:12px;padding:12px 14px"><summary style="cursor:pointer;font-size:13px;color:var(--ac)">📝 Rapport de génération (points à vérifier, annales…)</summary>'+
+      '<pre style="white-space:pre-wrap;font-family:inherit;font-size:12.5px;line-height:1.5;color:var(--tx2);margin:10px 0 0">'+esc(f.rapport)+'</pre></details>':'';
+    el.innerHTML=bar+rap+'<iframe id="ficheFrame" title="Fiche de cours" sandbox="allow-same-origin" style="display:block;width:100%;height:75vh;border:1px solid var(--bd);border-radius:16px;background:#F6F5FB"></iframe>';
+    var fr=document.getElementById('ficheFrame');
+    // pas de script dans la fiche (sandbox) ; on ajuste juste la hauteur pour éviter un double défilement
+    fr.onload=function(){try{var h=fr.contentDocument.documentElement.scrollHeight;if(h>300)fr.style.height=(h+12)+'px';}catch(e){}};
+    fr.srcdoc=f.html;
+  });
+}
+function openFicheFull(){
+  if(!CUR.deck)return;
+  loadFiche(CUR.deck.id).then(function(f){
+    if(!f||!f.html){toast('Fiche indisponible');return;}
+    var url=URL.createObjectURL(new Blob([f.html],{type:'text/html;charset=utf-8'}));
+    var w=window.open(url,'_blank');
+    if(!w){var a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();document.body.removeChild(a);}
+    setTimeout(function(){URL.revokeObjectURL(url);},60000);
+  });
+}
+function importFicheFile(input){
+  var file=input.files&&input.files[0];input.value='';
+  if(!file||!CUR.deck)return;
+  if(file.size>900*1024){toast('Fiche trop lourde (max 900 Ko)');return;}
+  var deck=CUR.deck,reader=new FileReader();
+  reader.onload=function(e){
+    var html=String(e.target.result||'');
+    if(html.indexOf('<')<0){toast('Ce fichier ne ressemble pas à une fiche HTML');return;}
+    saveFicheData(deck.id,html,'');
+    deck.hasFiche=true;dbSave();
+    toast('Fiche ajoutée ✓');
+    if(CUR.deck&&CUR.deck.id===deck.id)renderFiche();
+  };
+  reader.readAsText(file);
+}
+function delFiche(){
+  if(!CUR.deck||!confirm('Supprimer la fiche de ce cours ?\n\nLes cartes, les questions et le planning sont conservés.'))return;
+  var id=CUR.deck.id;
+  delete FICHE_CACHE[id];
+  if(window.ficheStore)window.ficheStore.del(id).catch(function(e){console.error(e);});
+  delete CUR.deck.hasFiche;dbSave();renderFiche();toast('Fiche supprimée');
+}
+
+// ════════════════════════════════════════
+// IMPORT AUTOMATIQUE (cours préparés la nuit, livrés par le Suivi)
+// ════════════════════════════════════════
+var AUTO_BUSY=false;
+function suiviCall(a,p){
+  var cfg=suiviCfg();
+  var u=cfg.url+'?k='+encodeURIComponent(cfg.key||'')+'&json=1&a='+a+'&p='+encodeURIComponent(JSON.stringify(p||{}));
+  return fetch(u,{redirect:'follow'}).then(function(r){return r.json();}).then(function(d){
+    if(!d||d.error)throw new Error((d&&d.error)||'Réponse invalide');
+    return d;
+  });
+}
+// Liste des cours présents dans MedFlash : sert au Suivi à ne jamais refaire un cours qui existe déjà
+function mfDeckList(){
+  var L=[];
+  D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){L.push(d.sid?{sid:d.sid}:{f:f.name,n:d.name});});});
+  return L;
+}
+// Même lecture que « Importer » dans l'onglet Cartes
+function parseCardsText(raw){
+  raw=String(raw||'').trim();
+  var parts=[[raw,false]];
+  var mk=raw.search(/^[ \t]*=+[ \t]*STRICT\b.*$/im);
+  if(mk>=0)parts=[[raw.slice(0,mk),false],[raw.slice(mk).replace(/^\s*=+[ \t]*STRICT\b.*\n?/i,''),true]];
+  var out=[],seen={};
+  parts.forEach(function(pt){
+    pt[0].split(/\n---\s*\n|\n---\s*$|^---\s*\n/m).map(function(b){return b.trim();}).filter(Boolean).forEach(function(blk){
+      var lines=blk.split('\n').filter(function(l){return l.trim();});
+      if(lines.length<2)return;
+      var q=lines[0].replace(/^\*\*|\*\*$/g,'').trim(),a=lines.slice(1).join('\n').trim();
+      if(!q||!a)return;
+      var k=q.toLowerCase();if(seen[k])return;seen[k]=1;
+      var c={id:uid(),question:q,answer:a,stats:{ok:0,ko:0}};
+      if(pt[1])c.type='strict';
+      out.push(c);
+    });
+  });
+  return out;
+}
+function autoTake(it){
+  var already=D.folders.some(function(f){return (f.decks||[]).some(function(d){return d.sid===it.id;});});
+  if(already)return suiviCall('imp',{g:it.g}).then(function(){return false;});
+  return suiviCall('take',{g:it.g}).then(function(c){
+    var cards=parseCardsText(c.cards);
+    if(!cards.length)throw new Error('Aucune carte lisible pour « '+it.t+' »');
+    var saveQ=QIMP;QIMP={rej:0,noOk:0};
+    var series=c.qcm?parseQSeries(String(c.qcm).trim()):[];
+    QIMP=saveQ;
+    var kw=noAcc(String(it.k||'')).toLowerCase(),sn=noAcc(String(it.sn||'')).toLowerCase();
+    var folder=D.folders.find(function(f){var n=noAcc(f.name||'').toLowerCase();return n===sn||(kw&&n.indexOf(kw)>=0);});
+    if(!folder){
+      folder={id:uid(),name:it.sn,emoji:it.e||'📘',color:it.c1||'#6c63ff',examDate:it.ex||null,examHistory:[],decks:[]};
+      D.folders.push(folder);
+    }
+    if(!folder.decks)folder.decks=[];
+    var start=today();
+    var deck={id:uid(),name:it.t,cards:cards,sessions:[],createdAt:Date.now(),relearn:false,pending:true,sid:it.id,auto:true};
+    if(series.length){deck.qSeries=series;deck.lastSeriesIdx=-1;}
+    if(folder.examDate){
+      deck.plan=buildPlan(start,folder.examDate);
+      deck.jSchedule=deck.plan.map(function(e){return e.off;});
+      deck.autoPlan=true;
+    } else {
+      deck.jSchedule=[0,1,3,7,12,19];
+      deck.plan=deck.jSchedule.map(function(o){return mkEntry(o,addDays(start,o),'normal');});
+      deck.autoPlan=false;
+    }
+    if(c.fiche){deck.hasFiche=true;saveFicheData(deck.id,c.fiche,c.rapport||'');}
+    folder.decks.push(deck);
+    dbSave();
+    return suiviCall('imp',{g:it.g}).then(function(){return true;},function(){return true;});
+  });
+}
+function autoImport(manual){
+  var cfg=suiviCfg();
+  if(!cfg.url||!cfg.key){if(manual)toast('Configure d\'abord la connexion au Suivi (clé EDIT)');return Promise.resolve(0);}
+  if(AUTO_BUSY)return Promise.resolve(0);
+  if(navigator.onLine===false){if(manual)toast('Hors connexion');return Promise.resolve(0);}
+  if(!manual){
+    var last=0;try{last=parseInt(localStorage.getItem('mf_auto_ts')||'0',10);}catch(e){}
+    if(Date.now()-last<5*60000)return Promise.resolve(0);
+  }
+  try{localStorage.setItem('mf_auto_ts',String(Date.now()));}catch(e){}
+  AUTO_BUSY=true;
+  var n=0,ko=0;
+  if(manual)toast('Recherche de nouveaux cours…');
+  flushDone();
+  return suiviCall('sync',{d:mfDeckList()}).then(function(r){
+    return (r.inbox||[]).reduce(function(pr,it){
+      return pr.then(function(){return autoTake(it);}).then(function(ok){if(ok)n++;},function(e){ko++;console.warn('import auto',e);});
+    },Promise.resolve());
+  }).then(function(){
+    if(n){
+      toast('📥 '+n+' nouveau'+(n>1?'x':'')+' cours ajouté'+(n>1?'s':'')+' (à démarrer)'+(ko?' · '+ko+' en échec':''));
+      try{renderHome();if(CUR.folder&&!CUR.deck)renderFolder();}catch(e){}
+    } else if(manual){toast(ko?'Import impossible pour '+ko+' cours — réessaie plus tard':'Aucun nouveau cours pour le moment');}
+  }).catch(function(e){
+    console.warn('import auto',e);
+    if(manual)toast('Import automatique impossible — vérifie le lien du Suivi et la clé EDIT');
+  }).then(function(){AUTO_BUSY=false;return n;});
+}
+window.autoImport=autoImport;
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&D.folders.length)autoImport(false);});
+// « Appris » coché tout seul dans le Suivi quand le J0 d'un cours importé automatiquement est validé
+function pushDone(sid){
+  var q=[];try{q=JSON.parse(localStorage.getItem('mf_done_q')||'[]');}catch(e){}
+  if(q.indexOf(sid)<0)q.push(sid);
+  try{localStorage.setItem('mf_done_q',JSON.stringify(q));}catch(e){}
+  flushDone();
+}
+function flushDone(){
+  var cfg=suiviCfg(),q=[];try{q=JSON.parse(localStorage.getItem('mf_done_q')||'[]');}catch(e){}
+  if(!cfg.url||!cfg.key||!q.length)return;
+  q.forEach(function(sid){
+    var u=cfg.url+'?k='+encodeURIComponent(cfg.key)+'&json=1&a=done&id='+encodeURIComponent(sid)+'&v=1';
+    fetch(u,{redirect:'follow'}).then(function(r){return r.json();}).then(function(d){
+      if(d&&d.error)throw new Error(d.error);
+      var cur=[];try{cur=JSON.parse(localStorage.getItem('mf_done_q')||'[]');}catch(e){}
+      localStorage.setItem('mf_done_q',JSON.stringify(cur.filter(function(y){return y!==sid;})));
+    }).catch(function(e){console.warn('appris en attente',e);});
+  });
 }
 
 
@@ -4396,13 +4605,30 @@ async function saveToCloud(uid){
     await Promise.all(jobs);  // les cours d'abord, le document principal ensuite
     await setDoc(ref,{v:2,folders:fsEnc(clean.folders),progress:fsEnc(clean.progress),examProgress:fsEnc(clean.examProgress),settings:fsEnc(clean.settings||{}),updatedAt:Date.now()});
     // Nettoyage des cours supprimés
-    _cloudDeckIds.filter(function(id){return ids.indexOf(id)<0;}).forEach(function(id){ deleteDoc(doc(db,'users',uid,'data','deck_'+id)).catch(function(){}); delete _deckSaved[id]; });
+    _cloudDeckIds.filter(function(id){return ids.indexOf(id)<0;}).forEach(function(id){ deleteDoc(doc(db,'users',uid,'data','deck_'+id)).catch(function(){}); deleteDoc(doc(db,'users',uid,'data','fiche_'+id)).catch(function(){}); delete _deckSaved[id]; });
     _cloudDeckIds=ids;
   } catch(e){
     console.error('Erreur sauvegarde:',e);
     try{ toast('⚠️ Sauvegarde cloud impossible — tes données restent sur cet appareil'); }catch(_){}
   }
 }
+
+// Fiches de cours : un document par cours, hors du document principal
+window.ficheStore = {
+  get: async function(id){
+    if(!CURRENT_USER) return null;
+    var s = await getDoc(doc(db,'users',CURRENT_USER.uid,'data','fiche_'+id));
+    return s.exists() ? s.data() : null;
+  },
+  set: async function(id,o){
+    if(!CURRENT_USER) return;
+    await setDoc(doc(db,'users',CURRENT_USER.uid,'data','fiche_'+id),{html:o.html||'',rapport:o.rapport||'',updatedAt:Date.now()});
+  },
+  del: async function(id){
+    if(!CURRENT_USER) return;
+    await deleteDoc(doc(db,'users',CURRENT_USER.uid,'data','fiche_'+id));
+  }
+};
 
 var _origDbSave = window.dbSave;
 window.dbSave = function(){
@@ -4430,6 +4656,7 @@ onAuthStateChanged(auth, async function(user){
     showAppScreen();
     window.init();
     toast('Connecté ✓');
+    setTimeout(function(){ try{ if(window.autoImport) window.autoImport(false); }catch(e){ console.warn(e); } }, 2500);
   } else {
     CURRENT_USER=null;
     showLoginScreen();

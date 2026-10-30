@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v12.4-2026-10-30-ipad">
+<meta name="app-build" content="v12.5-2026-10-30-barre">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -491,6 +491,26 @@ nav{padding-top:calc(12px + env(safe-area-inset-top,0px))}
 }
 @media(min-width:641px) and (max-width:899px){
   .mobile-nav{left:50%;right:auto;transform:translateX(-50%);width:min(620px,100%);border:1px solid var(--bd);border-radius:20px 20px 0 0}
+}
+
+/* v12.5 — barre du bas flottante, fine, qui se cache quand on lit */
+@media(max-width:899px){
+  body{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  .mobile-nav{left:50%;right:auto;bottom:calc(10px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
+    width:auto;max-width:calc(100% - 20px);display:flex;gap:2px;padding:5px;border:1px solid var(--bd);border-radius:999px;
+    background:rgba(22,24,33,.72);-webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px);
+    box-shadow:0 8px 28px rgba(0,0,0,.28);transition:transform .28s cubic-bezier(.4,0,.2,1),opacity .2s}
+  .light .mobile-nav{background:rgba(255,255,255,.72);box-shadow:0 8px 28px rgba(40,40,80,.14)}
+  .mobile-nav.mn-hide{transform:translate(-50%,calc(100% + 24px));opacity:0;pointer-events:none}
+  .mobile-nav button{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 8px;border-radius:999px;font:600 10px 'DM Sans',sans-serif;color:var(--tx2);white-space:nowrap}
+  .mobile-nav button span{display:block;font-size:18px;line-height:1;margin:0}
+  .mobile-nav button.active{color:var(--ac);background:rgba(108,99,255,.14)}
+  .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+}
+@media(min-width:641px) and (max-width:899px){
+  .mobile-nav{border-radius:999px}
+  .mobile-nav button{flex:0 0 auto;flex-direction:row;gap:7px;padding:9px 14px;font-size:13px}
+  .mobile-nav button span{font-size:17px}
 }
 </style>
 </head>
@@ -5284,6 +5304,24 @@ document.getElementById('authEmail').addEventListener('keydown', function(e){
       localStorage.setItem('mf3_install_hint','off');
     }, 3000);
   }
+})();
+</script>
+
+<script>
+// Barre du bas : se cache quand on descend (lecture), revient dès qu'on remonte ou qu'on change d'écran
+(function(){
+  var nav=document.getElementById('mobileNav');if(!nav)return;
+  var last=new WeakMap();
+  function pos(t){return (t===document||t===document.documentElement||t===document.body)?(window.scrollY||document.documentElement.scrollTop||0):(t.scrollTop||0);}
+  document.addEventListener('scroll',function(e){
+    var t=e.target,key=(t===document||t===document.documentElement||t===document.body)?document:t;
+    var y=pos(t),p=last.has(key)?last.get(key):0;
+    if(y<40||y<p-6)nav.classList.remove('mn-hide');
+    else if(y>p+6)nav.classList.add('mn-hide');
+    if(!last.has(key)||Math.abs(y-p)>6||y<40)last.set(key,y);
+  },true);
+  var orig=window.showScreen;
+  if(typeof orig==='function')window.showScreen=function(){nav.classList.remove('mn-hide');return orig.apply(this,arguments);};
 })();
 </script>
 </body>

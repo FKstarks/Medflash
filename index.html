@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v12.3-2026-10-30-ordre">
+<meta name="app-build" content="v12.4-2026-10-30-ipad">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -460,6 +460,38 @@ body.logged-out #sLogin{position:static!important;top:auto!important}
 .week-event.fac-exam{background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.35)}
 .fac-ev{cursor:default}.week-event[class*="fac-"]{cursor:default;font-size:10.5px}
 @media(min-width:900px){.dashboard-screen.active{overflow:auto!important}.dashboard-main-grid{overflow:visible!important;min-height:300px}.dashboard-list{max-height:340px}}
+
+/* v12.4 — barre d'état iOS + iPad */
+.toast:not(.show),#pwaBar:not(.show){opacity:0;visibility:hidden;pointer-events:none}
+.toast,#pwaBar{transition:transform .32s cubic-bezier(.4,0,.2,1),opacity .2s,visibility .2s}
+nav .nav-r .btn{white-space:nowrap}
+@media(max-width:640px){
+  nav{padding-left:12px;padding-right:12px}
+  .logo{font-size:18px}
+  nav .nav-r .btn-sm{padding:6px 10px;font-size:12px}
+  nav .nav-r .theme-btn{width:34px;height:34px}
+}
+nav{padding-top:calc(12px + env(safe-area-inset-top,0px))}
+@media(min-width:900px){
+  nav{height:calc(61px + env(safe-area-inset-top,0px));padding-top:calc(12px + env(safe-area-inset-top,0px))}
+  .screen{top:calc(61px + env(safe-area-inset-top,0px))}
+  .app-sidebar{padding-top:calc(18px + env(safe-area-inset-top,0px))}
+}
+@media(max-width:899px){
+  body{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+  .mobile-nav{display:grid;position:fixed;left:0;right:0;bottom:0;z-index:130;grid-template-columns:repeat(6,1fr);background:rgba(15,17,23,.94);border-top:1px solid var(--bd);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
+  .light .mobile-nav{background:rgba(255,255,255,.94)}
+  .mobile-nav button{border:0;background:transparent;color:var(--tx2);font:500 11px 'DM Sans',sans-serif;padding:6px 2px;border-radius:10px}
+  .mobile-nav button span{display:block;font-size:21px;margin-bottom:2px}
+  .mobile-nav button.active{color:var(--ac)}
+  nav{gap:8px}
+  .nav-r{gap:6px;min-width:0;flex-wrap:nowrap}
+  #btnCal,nav .nav-r>label.theme-btn,nav .nav-r>.theme-btn[title^="Exporter"],#userEmailTag{display:none!important}
+  .toast{bottom:calc(90px + env(safe-area-inset-bottom,0px))}
+}
+@media(min-width:641px) and (max-width:899px){
+  .mobile-nav{left:50%;right:auto;transform:translateX(-50%);width:min(620px,100%);border:1px solid var(--bd);border-radius:20px 20px 0 0}
+}
 </style>
 </head>
 <body class="logged-out">
@@ -1036,7 +1068,7 @@ function dbSave(){
   }catch(e2){try{localStorage.removeItem('mf3');}catch(e3){}}
 }
 window.dbSave=dbSave;
-function dbLoad(){try{var r=localStorage.getItem('mf3');if(r){var p=JSON.parse(r);D.folders=p.folders||[];D.progress=p.progress||{};D.examProgress=p.examProgress||{};D.settings=p.settings||D.settings||{};D.tomb=p.tomb||{};D._sb=p._sb||null;D._sbUid=p._sbUid||null;if(p._light)(D.folders||[]).forEach(function(f){(f.decks||[]).forEach(function(d){d.cards=d.cards||[];d._nh=1;});});}}catch(e){}}
+function dbLoad(){try{var r=localStorage.getItem('mf3');if(r){var p=JSON.parse(r);D.folders=(p.folders||[]).map(function(f){if(f&&f.decks)f.decks=f.decks.filter(function(d){return d&&d.id;});return f;});D.progress=p.progress||{};D.examProgress=p.examProgress||{};D.settings=p.settings||D.settings||{};D.tomb=p.tomb||{};D._sb=p._sb||null;D._sbUid=p._sbUid||null;if(p._light)(D.folders||[]).forEach(function(f){(f.decks||[]).forEach(function(d){d.cards=d.cards||[];d._nh=1;});});}}catch(e){}}
 
 // ════════════════════════════════════════
 // DATES (tout en 'YYYY-MM-DD' local)
@@ -4801,7 +4833,7 @@ function syncMerge(C){
     outF[id]={id:id,src:w===l?'l':'c',meta:folderLightObj(w),decks:[]};fseq.push(id);
   });
   var E={},seq=[];
-  function add(src,f,d){var e=E[d.id];if(!e){e=E[d.id]={};seq.push(d.id);}e[src]={d:d,fid:f.id};}
+  function add(src,f,d){if(!d||!d.id)return;var e=E[d.id];if(!e){e=E[d.id]={};seq.push(d.id);}e[src]={d:d,fid:f.id};}
   (C.folders||[]).forEach(function(f){(f.decks||[]).forEach(function(d){add('c',f,d);});});
   (D.folders||[]).forEach(function(f){(f.decks||[]).forEach(function(d){add('l',f,d);});});
   var bySid={};
@@ -4840,7 +4872,7 @@ function writeDeckHeavy(uid,f,d){
 function readDeckHeavy(uid,id){
   return getDoc(doc(db,'users',uid,'data','deck_'+id)).then(function(s){
     if(!s.exists())return null;var x=s.data();
-    return {cards:fsDec(x.cards||[]),qSeries:x.qSeries!==undefined?fsDec(x.qSeries):undefined};
+    return {cards:fsDec(x.cards||[]),qSeries:x.qSeries!==undefined?fsDec(x.qSeries):undefined,meta:x.meta||null};
   });
 }
 function readCloudMain(uid){
@@ -4920,7 +4952,14 @@ async function syncAdopt(uid,M,pre){
       // modifié pendant l'échange : on garde la version locale, un nouvel échange suivra
       if(d&&pre.d[e.id]&&now.d[e.id]&&(pre.d[e.id].l!==now.d[e.id].l||pre.d[e.id].h!==now.d[e.id].h)){changedDuring=true;return d;}
       if(e.w==='l'&&d&&!d._nh)return d;
-      var c=e.d,needHeavy=!d||d._nh||(d.mt||0)!==(c.mt||0)||!c.mt;
+      if(e.w==='l'&&d&&d._nh){
+        // version locale gagnante mais cartes pas en mémoire : on garde le cours tel quel et on recharge seulement ses cartes
+        fetches.push(readDeckHeavy(uid,e.id).then(function(h){
+          if(h){d.cards=h.cards;if(h.qSeries!==undefined)d.qSeries=h.qSeries;if(!d.name&&h.meta&&h.meta.n)d.name=h.meta.n;delete d._nh;touched=true;}
+        }).catch(function(err){console.warn('cartes',e.id,err);}));
+        return d;
+      }
+      var c=deckLightObj(e.d),needHeavy=!d||d._nh||(d.mt||0)!==(c.mt||0)||!c.mt;
       if(!d){d={};touched=true;}
       var keepCards=d.cards,keepQ=d.qSeries,hadQ=('qSeries' in d);
       if(deckLight(d)!==deckLight(c)){touched=true;}
@@ -4930,7 +4969,7 @@ async function syncAdopt(uid,M,pre){
       if(hadQ)d.qSeries=keepQ;
       if(needHeavy){
         fetches.push(readDeckHeavy(uid,e.id).then(function(h){
-          if(h){d.cards=h.cards;if(h.qSeries!==undefined)d.qSeries=h.qSeries;else delete d.qSeries;delete d._nh;touched=true;}
+          if(h){d.cards=h.cards;if(h.qSeries!==undefined)d.qSeries=h.qSeries;else delete d.qSeries;if(!d.name&&h.meta&&h.meta.n){d.name=h.meta.n;if(!d.sid&&h.meta.sid)d.sid=h.meta.sid;}delete d._nh;touched=true;}
           else if(!d.cards)d.cards=[];
         }).catch(function(err){console.warn('cartes',e.id,err);if(!keepCards)d._nh=1;}));
       }

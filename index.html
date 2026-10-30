@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v12.2-2026-10-30-synchro">
+<meta name="app-build" content="v12.3-2026-10-30-ordre">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -1698,6 +1698,25 @@ function openFolder(id){
 // ════════════════════════════════════════
 // FOLDER
 // ════════════════════════════════════════
+// Ordre d'affichage des cours d'une matière : date du cours à la fac (d'après le Suivi),
+// sinon date d'ajout dans MedFlash. Affichage seulement : l'ordre enregistré ne change pas.
+function deckOrder(f){
+  var cache=null;try{cache=JSON.parse(localStorage.getItem('mf_suivi_cache')||'null');}catch(e){}
+  var byId={},same=[],fn=recNorm(f.name);
+  if(cache&&cache.subj)cache.subj.forEach(function(o){
+    var on=recNorm(o.n),ok=on&&fn&&(on===fn||on.indexOf(fn)>=0||fn.indexOf(on)>=0);
+    (o.cs||[]).forEach(function(c){if(!c.d)return;byId[c.id]=c.d;if(ok)same.push({n:recNorm(c.t),d:c.d});});
+  });
+  function dateOf(d){
+    if(d.sid&&byId[d.sid])return byId[d.sid];
+    var n=recNorm(d.name).replace(/^fiche /,''),hit=null;
+    same.forEach(function(c){if(!hit&&c.n===n)hit=c.d;});
+    if(!hit&&n.length>4)same.forEach(function(c){if(!hit&&c.n.length>4&&(c.n.indexOf(n)>=0||n.indexOf(c.n)>=0))hit=c.d;});
+    return hit||(d.createdAt?dStr(new Date(d.createdAt)):'9999-99-99');
+  }
+  return (f.decks||[]).map(function(d,i){return {d:d,k:dateOf(d),i:i};})
+    .sort(function(a,b){return a.k<b.k?-1:a.k>b.k?1:a.i-b.i;}).map(function(x){return x.d;});
+}
 function renderFolder(){
   if(!CUR.folder)return;
   var f=CUR.folder,t=today();
@@ -1723,7 +1742,7 @@ function renderFolder(){
   if(!(f.decks||[]).length){
     g.innerHTML='<div class="empty"><div class="empty-i">📂</div><div class="empty-t">Aucun cours</div><div class="empty-s">Ajoute ton premier cours</div></div>';
   }
-  (f.decks||[]).forEach(function(d){
+  deckOrder(f).forEach(function(d){
     var st=deckStatus(d);
     var el=document.createElement('div');
     el.className='deck-card';

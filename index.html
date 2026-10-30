@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v12.1-2026-10-08-0055">
+<meta name="app-build" content="v12.2-2026-10-30-synchro">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -1026,9 +1026,17 @@ var TH_GOOD=75, TH_BAD=40;
 // ════════════════════════════════════════
 // STORAGE
 // ════════════════════════════════════════
-function dbSave(){try{localStorage.setItem('mf3',JSON.stringify(D));localStorage.setItem('mf3_ts',String(Date.now()));}catch(e){}}
+function dbSave(){
+  try{localStorage.setItem('mf3',JSON.stringify(D));localStorage.setItem('mf3_ts',String(Date.now()));return;}catch(e){}
+  // Trop gros pour la mémoire locale : on garde la liste et les plannings sans les cartes (elles restent dans le cloud)
+  try{
+    var L=JSON.parse(JSON.stringify(D,function(k,v){return (k==='cards'||k==='qSeries')?undefined:v;}));
+    (L.folders||[]).forEach(function(f){(f.decks||[]).forEach(function(d){d._nh=1;});});
+    L._light=1;localStorage.setItem('mf3',JSON.stringify(L));localStorage.setItem('mf3_ts',String(Date.now()));
+  }catch(e2){try{localStorage.removeItem('mf3');}catch(e3){}}
+}
 window.dbSave=dbSave;
-function dbLoad(){try{var r=localStorage.getItem('mf3');if(r){var p=JSON.parse(r);D.folders=p.folders||[];D.progress=p.progress||{};D.examProgress=p.examProgress||{};D.settings=p.settings||D.settings||{};}}catch(e){}}
+function dbLoad(){try{var r=localStorage.getItem('mf3');if(r){var p=JSON.parse(r);D.folders=p.folders||[];D.progress=p.progress||{};D.examProgress=p.examProgress||{};D.settings=p.settings||D.settings||{};D.tomb=p.tomb||{};D._sb=p._sb||null;D._sbUid=p._sbUid||null;if(p._light)(D.folders||[]).forEach(function(f){(f.decks||[]).forEach(function(d){d.cards=d.cards||[];d._nh=1;});});}}catch(e){}}
 
 // ════════════════════════════════════════
 // DATES (tout en 'YYYY-MM-DD' local)
@@ -3342,7 +3350,7 @@ function saveSuiviCfg(){
 function renderSuivi(){
   var el=document.getElementById('suiviBody');if(!el)return;
   var d=suiviCache(),cfg=suiviCfg();
-  var head='<div class="panel-card" style="margin-bottom:16px"><div class="panel-head"><h3>🔗 Connexion au Suivi MED2'+(d&&d.r?' <span class="tag tag-soon" style="margin-left:6px">'+(d.r==='edit'?'modifiable':'lecture seule')+'</span>':'')+'</h3>'+(cfg.url?'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="autoImport(true)">📥 Nouveaux cours</button><button class="btn btn-ghost btn-sm" onclick="syncSuivi(false)">🔄 Actualiser</button></div>':'')+'</div>'+
+  var head='<div class="panel-card" style="margin-bottom:16px"><div class="panel-head"><h3>🔗 Connexion au Suivi MED2'+(d&&d.r?' <span class="tag tag-soon" style="margin-left:6px">'+(d.r==='edit'?'modifiable':'lecture seule')+'</span>':'')+'</h3>'+(cfg.url?'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="autoImport(true)">📥 Nouveaux cours</button><button class="btn btn-ghost btn-sm" onclick="syncSuivi(false)">🔄 Actualiser</button><button class="btn btn-ghost btn-sm" onclick="openRecover()">🛟 Cours disparus</button></div>':'')+'</div>'+
     (cfg.url&&d&&d.ts?'<div style="font-size:12px;color:var(--tx2);margin-bottom:8px">Dernière synchro '+progAgoTxt(d.ts)+'</div>':'')+
     '<details'+(cfg.url?'':' open')+'><summary style="cursor:pointer;font-size:13px;color:var(--ac)">'+(cfg.url?'Modifier la connexion':'Configurer la connexion')+'</summary>'+
     '<div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">'+
@@ -3402,7 +3410,15 @@ function renderFiche(){
   var el=document.getElementById('ficheArea');if(!el||!CUR.deck)return;
   var d=CUR.deck,id=d.id;
   if(!d.hasFiche){
-    el.innerHTML='<div class="empty-soft"><div style="font-size:34px;margin-bottom:8px">📄</div><div style="margin-bottom:14px">Pas encore de fiche pour ce cours.</div>'+ficheImportBtn(false)+'</div>';
+    var none='<div class="empty-soft"><div style="font-size:34px;margin-bottom:8px">📄</div><div style="margin-bottom:14px">Pas encore de fiche pour ce cours.</div>'+ficheImportBtn(false)+'</div>';
+    if(d._ficheChecked){el.innerHTML=none;return;}
+    // L'info « ce cours a une fiche » a pu se perdre : on regarde quand même dans le cloud
+    el.innerHTML='<div class="empty-soft">Recherche de la fiche…</div>';
+    loadFiche(id).then(function(f){
+      if(!CUR.deck||CUR.deck.id!==id)return;
+      if(f&&f.html){d.hasFiche=true;dbSave();renderFiche();}
+      else{d._ficheChecked=1;el.innerHTML=none;}
+    });
     return;
   }
   el.innerHTML='<div class="empty-soft">Chargement de la fiche…</div>';
@@ -3566,6 +3582,106 @@ function autoTakeQ(it){
     return suiviCall('impq',{g:it.g}).then(function(){return true;},function(){return true;});
   });
 }
+// ════════════════════════════════════════
+// RÉCUPÉRATION DES COURS DISPARUS (bug de synchro d'octobre 2026)
+// Les cours préparés la nuit restent dans le Drive ; on les ré-importe via le Suivi (action « take »).
+// ════════════════════════════════════════
+var RECOVER_LIST=[
+['Sémiologie','Enfant','1cUH6pBgCWTV7dc7h3Ybmfn6m881qTKFN'],['Sémiologie','Urologique','1xI9dnI1TmXTDdPJtZoak7gU9E1Yt019I'],['Sémiologie','Ostéo-articulaire','1DGlnBRmHEtvpp8A2juCLGvJhQs3QQBlo'],['Sémiologie','Sujet âgé','1XaRVGX0VoGCm84njKvzWn5AxG_JlRlun'],['Sémiologie','Médico-légale','1m4tAdt6yLxBytQTyh5gG1qw4cbS9CRhe'],['Sémiologie','Gynécologie','1YIj3VECjkOOIuC5W4Ephct-qKpenHNrF'],['Sémiologie','Sémiologie digestive','1vmw6vH_A78lBANsZN_uguzSadSGhGA6A'],['Sémiologie','Abord du malade','1SzdEHd1d1Xx5sjJ6ViPWwseLB3MQIAxL'],['Sémiologie','Examen neurologique','1_pGS9jJfo3hcBhURZgLJQ61cI-JhWki-'],['Sémiologie','Traumatisé de la route','12kfG52FrNsM_djbIPvjN8ecY-VYurars'],['Sémiologie','Fin de vie','1b2-_wf0tAS3tnS2wyw_tZxueXmkia5B5'],['Sémiologie','Sémantique médicale','13h41zaVVXgAuRWZPI-xczP2OhAdWxSZR'],
+['Tissu sanguin','Réglementation transfusion','1vjwgDHqyYVWxuVvcnFCUhc6c1hSx-SZK'],['Tissu sanguin','Produits sanguins','1yJ9GjgpjvglimlVUsqSG3IQgy-VQroGG'],['Tissu sanguin','Groupes sanguins','1T01fv85wEybVQkZPvQnbWi4LVNrEcD-B'],['Tissu sanguin','Hémostase cas cliniques','13hHlXI-J2xm-SxAssSSuCLqZk2vQtuv1'],['Tissu sanguin','Syndromes hématologiques','1_0dDwulczYPFmeT-nAGobXpKl8IXaxtO'],['Tissu sanguin','Hémostase coagulation','1C1IlZ7IyMC9MWWY3CNt5H_GUTuz-btc7'],['Tissu sanguin','Cellules matures','1D8kdthXjqCWaomkCDAP7v0qOjfo4UuE5'],['Tissu sanguin','Anémie cas cliniques','1E-zP-NzJE00P15mPEO-6w6WEmDKunNiH'],['Tissu sanguin','Types anémie','19MvW-4_XIprI9aRmCb4Ix0rdVBye8HzZ'],['Tissu sanguin','Hème globules rouges','1Q9CDQQ-duK_FXLhQc192ClVn4ov6FHtl'],
+['Immunologie','Réponse bactéries intracellulaires virus champignons','1jKz1CaF819wXEzwoVqdDtfX_-6aUQTBm'],['Immunologie','Réponse bactéries extracellulaires','1CKRsQkWsZ40m9PX5ceMFryY_3jXkDV5O'],['Immunologie','Modifications du BCR','1p-nPwTz2GDfUaUEgpSstagkLCY_npWQu'],['Immunologie','Récepteur B et ontogénèse B','10_LgoQeKsdZhh1R--R_m3YlEP66XZDpY'],['Immunologie','Mémoire T','1_eQpSsennk53pGYwBxqvwug_DrPPGpO6'],['Immunologie','Activation lymphocytes T et Treg','1ZV2qb2RjAW4NmaMTBMl-KcvM4uj7QoAc'],['Immunologie','Immunité innée et complément','1zeudCziNT63Xj_VKZG-gJLptdyimVQcS'],
+['BMCT','Risque médicamenteux','1cZaIZTBHAiDIkItwtQy2Yxe_jLjPTmz1'],['BMCT','Système immunitaire','1_a8ZTbM1bLCR1FQfNDd0ztkAmgAmJRd2'],['BMCT','Neurotransmission','1obu62zQHZrNzKzUT9rj3jL8T5ykhu6Ep'],['BMCT','Métabolisme','14y4P6BEDOiX_tyXi6-NWaK_dlbse84xu'],['BMCT','Système nerveux végétatif','1ZQPGsnn4-nf6McxCg5xEPc83aY7qnu9l'],['BMCT','Facteurs de variabilité','1-w5bxCGiwAwEAUHFioWyT2MlfnZMcGKF'],['BMCT','Suivi pharmaceutique pharmacologique','1X-3KXNLApHIPGWjhccJssvmj_1FI2Toc'],['BMCT','Principes de pharmacocinétique et prescription','1EUtoN2TpekZAoJ0IU_ufVduf9rgr7YLV'],['BMCT','Pharmacocinétique','1lfVIEpYsrTMZ83DFtGsMfRF_zyBX731w'],['BMCT','Pharmacocinétique','16j7p4cP161SSghS9mifmk5OJH6rRR9j9'],['BMCT','Pharmacocinétique','1MUR70BJe0m0oe45luMPtkuVA6CuyJwwh'],['BMCT','Pharmacocinétique','1EzHrab3J9twD8Z2od12JbKq_gUTM_sli'],
+['BMCP','Thérapies ciblées morts cellulaires','1rRfbfq2Hc4LaYvaliUgXQZWdVyy8sFV1'],['BMCP','Stress oxydant','1Ijb5SvHr9YAjkYzgMnbsJQLtCjMyzOXa'],['BMCP','Métabolisme général (suite du 23-09)','1gqVyBzCXeZxSSFvOyWLmRn-WXs5JMYu-'],['BMCP','Métabolisme général','1L00heFWOvJrm_AHlqCGgjBHbA3aiRANQ'],['BMCP','Métabolisme énergétique','1ZlOrWvdCWAtR-oWp5bwITUHo6aHSr32O'],['BMCP','Métabolisme protéines','1w8xlA83YYhXPZcwEtNVqg_wijYkzErVs'],['BMCP','Métabolisme glucidique','1IwMze4yspHpb6494Lm9HYOPUYzugCJo1'],['BMCP','Métabolisme lipidique','1PATEzbIcEyjuGxW0ucQYXWwG87nDM4kq'],['BMCP','Insuline','1ubNM6CVigz838viD_o6zKxhBbwok-JC_'],['BMCP','Dépistage maladies métaboliques','1zkSLZNcZ9PUsqbJ_O4bSHs4Iqo6GAytf'],
+['Virologie','Pathogènes viraux I','1aL1uvSEsgPhv6Wd-4p5f2VOmkMZ3WNdp'],['Virologie','Virus et hôte II','1MHzD7FIreb-9yeo6WUWXElU_0YC48vuM'],['Virologie','Virus et hôte I','1qST2WPc2RdU9wYhA04tbmiKw7lwjtR5H'],['Virologie','Structure et comportement','1bcIoFwyvDoh0GJBcLmDCpeRR8umR-RJp'],
+['Parasito-mycologie','Parasitisme classification','1WN347yKitXsYnqdVrILUwJ2VnSx6YA11'],['Parasito-mycologie','Candidose cryptococcose','1ggEM98LNVp6EWzyZlOmIeoBY-Qlobu1f'],['Parasito-mycologie','Mycoses superficielles','13AFOH2_QxEqPNrps84L7YYFnoft4x0f6'],['Parasito-mycologie','Parasitoses digestives autochtones 2','1RdjV3DG3_VhShMNrYK-dQJNo5lTvOX-D'],['Parasito-mycologie','Parasitoses digestives autochtones','1M0HJc3Vo9v2oLmT-cCjoswVfwc0SswdL'],['Parasito-mycologie','Champignons classification','1Vzm4ks9FTN53-esAhZ04bBlyukiifTBh'],
+['Informatique médicale','Réutilisation de données','1ku1sNf_S8rbsqlmDGEgO1l5s93YIMsF5'],['Informatique médicale','Informatique en santé','11HNpdcTaVIQCI15LKP8GKFFHf-hBe9Ei'],
+['Biomédecine quantitative','Tests diagnostiques','1KVvpFSYZp6B7grK0kZA69sl-pTD_F-88'],['Biomédecine quantitative','Dispositifs médicaux','1DtTdhjuPRGdFNDc_1Cvt3qP1Z3UZEbjo'],
+['SSH','Littérature 1','1_jbRKT5pj-sT4tI4CZCilDReQDG6QqPm'],['SSH','Littérature 2','1NOCNQvOtsKxKZTL1ovZR5NHBUOvQubYU'],['SSH','Éthique 1','1I2QILyc-wPrmHC7X10WWDhdKyQ0Qu9Is'],['SSH','Éthique 2','1z18sxf3eQyGa_Wd5_UioMQ-E0hx3rNJJ'],['SSH','Éthique 3','1Lp4rTl2XM_9QZIwaBXtJKaRlgBp9rT2z'],['SSH','Épistémologie 1','1cVkdqFh1xyZZJs41_5f6CL_QOfHXhpwc'],['SSH','Épistémologie 2','1MHCcFjM_AH8-j3crnCjNg3wksnif4cEP'],['SSH','Épistémologie 3','1TQ6vioZxa9dLwr9EuBIoiiUM1FYbcKfo'],['SSH','Histoire médecine 1','1WocYZlLRwTaY67QtX6izZAtiQIriZtSM'],['SSH','Histoire médecine 2','1WDVUC1ZIUAw0TbqB9gniXKGbaF4dKRHX']
+];
+function recNorm(s){return noAcc(String(s||'')).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
+function recFolderFor(sn){
+  var n=recNorm(sn);
+  return D.folders.find(function(f){var m=recNorm(f.name);return m===n||m.indexOf(n)>=0||n.indexOf(m)>=0&&m.length>2;})||null;
+}
+// Le cours est-il déjà dans MedFlash ? (même cours du Suivi, ou même nom dans la même matière)
+function recPresent(sn,t,sid){
+  if(sid&&D.folders.some(function(f){return (f.decks||[]).some(function(d){return d.sid===sid;});}))return true;
+  var f=recFolderFor(sn);if(!f)return false;
+  var n=recNorm(t);
+  return (f.decks||[]).some(function(d){return recNorm(d.name)===n;});
+}
+function openRecover(){
+  var seen={},rows=[];
+  RECOVER_LIST.forEach(function(r,i){
+    var key=r[0]+'|'+r[1];
+    if(recPresent(r[0],r[1]))return;
+    var dup=seen[key];seen[key]=1;
+    rows.push({i:i,sn:r[0],t:r[1],g:r[2],dup:!!dup});
+  });
+  var ov=document.getElementById('mRecover');
+  if(!ov){ov=document.createElement('div');ov.className='overlay';ov.id='mRecover';document.body.appendChild(ov);}
+  var html='<div class="modal"><h2>🛟 Cours disparus</h2>';
+  if(!rows.length){
+    html+='<p style="color:var(--tx2)">Tous les cours préparés la nuit sont bien dans MedFlash. Rien à récupérer.</p>'+
+      '<div style="display:flex;justify-content:flex-end;margin-top:18px"><button class="btn btn-ghost" onclick="closeModal(\'mRecover\')">Fermer</button></div></div>';
+    ov.innerHTML=html;openModal('mRecover');return;
+  }
+  html+='<p style="color:var(--tx2);font-size:14px;margin-bottom:12px">Ces cours ont été préparés (fiche, cartes, QCM) mais ne sont plus dans ta liste. Décoche ceux que tu avais supprimés exprès.</p><div id="recList" style="max-height:52vh;overflow:auto">';
+  var last='';
+  rows.forEach(function(r){
+    if(r.sn!==last){html+='<div style="font-weight:700;margin:12px 0 6px">'+esc(r.sn)+'</div>';last=r.sn;}
+    html+='<label style="display:flex;gap:10px;align-items:center;padding:5px 0;font-size:14px"><input type="checkbox" data-i="'+r.i+'" checked> '+esc(r.t)+(r.dup?' <span style="color:var(--tx3);font-size:12px">(autre exemplaire)</span>':'')+'</label>';
+  });
+  html+='</div><div id="recStatus" style="font-size:13px;color:var(--tx2);margin-top:12px"></div>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn btn-ghost" onclick="closeModal(\'mRecover\')">Annuler</button><button class="btn btn-primary" id="recGo" onclick="runRecover()">Récupérer</button></div></div>';
+  ov.innerHTML=html;openModal('mRecover');
+}
+function runRecover(){
+  var cfg=suiviCfg();
+  if(!cfg.url||!cfg.key){toast('Configure d\'abord la connexion au Suivi (clé EDIT)');return;}
+  var idx=[].slice.call(document.querySelectorAll('#recList input:checked')).map(function(x){return +x.getAttribute('data-i');});
+  if(!idx.length){closeModal('mRecover');return;}
+  var st=document.getElementById('recStatus'),btn=document.getElementById('recGo');
+  btn.disabled=true;
+  var ok=0,skip=0,ko=[],k=0;
+  idx.reduce(function(pr,i){
+    return pr.then(function(){
+      var r=RECOVER_LIST[i];k++;
+      st.textContent='Récupération '+k+'/'+idx.length+' : '+r[1]+'…';
+      return suiviCall('take',{g:r[2]}).then(function(c){
+        if(recPresent(r[0],c.t||r[1],c.id)){skip++;return;}
+        var f=recFolderFor(r[0]);
+        var it={id:c.id,g:r[2],t:c.t||r[1],sn:f?f.name:r[0],k:'',e:'📘',c1:'#6c63ff',ex:null};
+        return recAddDeck(it,c).then(function(){ok++;});
+      }).catch(function(e){ko.push(r[1]+' : '+((e&&e.message)||e));});
+    });
+  },Promise.resolve()).then(function(){
+    dbSave();
+    st.innerHTML='✅ '+ok+' cours récupéré'+(ok>1?'s':'')+(skip?' · '+skip+' déjà présent'+(skip>1?'s':''):'')+(ko.length?'<br>⚠️ '+ko.length+' échec'+(ko.length>1?'s':'')+' : '+esc(ko.slice(0,3).join(' ; ')):'');
+    btn.disabled=false;btn.textContent='Fermer';btn.onclick=function(){closeModal('mRecover');};
+    try{renderHome();if(CUR.folder&&!CUR.deck)renderFolder();}catch(e){}
+  });
+}
+// Même construction qu'un import automatique, sans re-marquer le cours côté Suivi
+function recAddDeck(it,c){
+  var cards=parseCardsText(c.cards);
+  if(!cards.length)return Promise.reject(new Error('aucune carte lisible'));
+  var saveQ=QIMP;QIMP={rej:0,noOk:0};
+  var series=c.qcm?parseQSeries(String(c.qcm).trim()):[];
+  QIMP=saveQ;
+  var folder=recFolderFor(it.sn);
+  if(!folder){folder={id:uid(),name:it.sn,emoji:it.e,color:it.c1,examDate:null,examHistory:[],decks:[]};D.folders.push(folder);}
+  if(!folder.decks)folder.decks=[];
+  var start=today();
+  var deck={id:uid(),name:it.t,cards:cards,sessions:[],createdAt:Date.now(),relearn:false,pending:true,sid:it.id,auto:true};
+  if(series.length){deck.qSeries=series;deck.lastSeriesIdx=-1;}
+  if(folder.examDate){deck.plan=buildPlan(start,folder.examDate);deck.jSchedule=deck.plan.map(function(e){return e.off;});deck.autoPlan=true;}
+  else{deck.jSchedule=[0,1,3,7,12,19];deck.plan=deck.jSchedule.map(function(o){return mkEntry(o,addDays(start,o),'normal');});deck.autoPlan=false;}
+  if(c.fiche){deck.hasFiche=true;saveFicheData(deck.id,c.fiche,c.rapport||'');}
+  folder.decks.push(deck);
+  return Promise.resolve();
+}
+
 function autoImport(manual){
   var cfg=suiviCfg();
   if(!cfg.url||!cfg.key){if(manual)toast('Configure d\'abord la connexion au Suivi (clé EDIT)');return Promise.resolve(0);}
@@ -4378,7 +4494,7 @@ document.querySelectorAll('.overlay').forEach(function(o){o.addEventListener('cl
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut as fbSignOut, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, deleteDoc, runTransaction } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-messaging.js";
 
 const firebaseConfig = {
@@ -4589,84 +4705,281 @@ function fsDec(v){
   return v;
 }
 
-// ── Stockage découpé (v2) : users/{uid}/data/main = réglages + matières + plannings (léger)
-//    users/{uid}/data/deck_<id> = cartes + séries de questions d'UN cours (limite 1 Mo par cours)
-var _deckSaved={};   // dernière version envoyée de chaque cours (pour n'envoyer que ce qui change)
-var _cloudDeckIds=[]; // cours présents dans le cloud
-async function loadFromCloud(uid){
-  try{
-    var ref = doc(db,'users',uid,'data','main');
-    var snap = await getDoc(ref);
-    if(snap.exists()){
-      var data=snap.data();
-      var localTs=parseInt(localStorage.getItem('mf3_ts')||'0',10);
-      var cloudTs=(data&&data.updatedAt)||0;
-      if(localTs>cloudTs+1000){
-        dbLoad();
-        if(D.folders&&D.folders.length){ await saveToCloud(uid); return; }
-      }
-      if(data&&data.folders){
-        var legacy=(data.v!==2);
-        var folders=fsDec(data.folders);
-        if(legacy){
-          // Ancien format : tout dans un seul document. On garde une copie de sécurité puis on migre.
-          try{ await setDoc(doc(db,'users',uid,'data','backup_v1'),data); }catch(e){ console.error('Backup impossible',e); throw e; }
-        } else {
-          // Nouveau format : on recharge les cartes de chaque cours
-          var localDecks={};
-          try{ var lp=JSON.parse(localStorage.getItem('mf3')||'{}'); (lp.folders||[]).forEach(function(f){(f.decks||[]).forEach(function(d){localDecks[d.id]=d;});}); }catch(e){}
-          var jobs=[];
-          folders.forEach(function(f){ (f.decks||[]).forEach(function(d){
-            jobs.push(getDoc(doc(db,'users',uid,'data','deck_'+d.id)).then(function(ds){
-              if(ds.exists()){ var x=ds.data(); d.cards=fsDec(x.cards||[]); if(x.qSeries!==undefined)d.qSeries=fsDec(x.qSeries); _deckSaved[d.id]=JSON.stringify({cards:d.cards,qSeries:d.qSeries}); }
-              else { var l=localDecks[d.id]; d.cards=l?(l.cards||[]):[]; if(l&&l.qSeries!==undefined)d.qSeries=l.qSeries; }
-            }));
-          }); });
-          await Promise.all(jobs);
-        }
-        D.folders=folders;
-        D.progress=fsDec(data.progress||{});
-        D.examProgress=fsDec(data.examProgress||{});
-        D.settings=fsDec(data.settings||{});
-        _cloudDeckIds=[];folders.forEach(function(f){(f.decks||[]).forEach(function(d){_cloudDeckIds.push(d.id);});});
-        try{ localStorage.setItem('mf3', JSON.stringify(D)); localStorage.setItem('mf3_ts', String((data&&data.updatedAt)||Date.now())); }catch(e){}
-        if(legacy){ await saveToCloud(uid); }
-      }
-    } else {
-      await saveToCloud(uid);
-    }
-  } catch(e){ console.error('Erreur chargement:',e); }
+// ── Synchronisation multi-appareils (v3, format cloud v2 conservé)
+//    users/{uid}/data/main      = réglages + matières + plannings (léger)
+//    users/{uid}/data/deck_<id> = cartes + séries de QCM d'UN cours
+//    users/{uid}/data/fiche_<id>= fiche HTML d'UN cours
+// Principe : avant chaque enregistrement, l'appareil RELIT le cloud et FUSIONNE cours par cours.
+//  - un cours modifié ici reçoit un tampon « mt » ; à chaque fusion, la version la plus récente gagne ;
+//  - un cours absent d'un appareil n'est JAMAIS supprimé pour autant : seule une suppression faite
+//    dans l'appli crée une « pierre tombale » (tomb) qui retire le cours partout ;
+//  - au retour dans l'appli, l'appareil se remet à jour avant toute chose.
+var SYNC={busy:false,again:false,last:0,timer:null};
+function hstr(s){var h=5381,i=s.length;while(i)h=(h*33)^s.charCodeAt(--i);return (h>>>0).toString(36)+'.'+s.length;}
+function _pick(o,skip){var r={};Object.keys(o).forEach(function(k){if(k.charAt(0)!=='_'&&skip.indexOf(k)<0)r[k]=o[k];});return r;}
+function deckLightObj(d){return _pick(d,['cards','qSeries']);}
+function deckLight(d){return JSON.stringify(_pick(d,['cards','qSeries','mt']));}
+function deckHeavy(d){return JSON.stringify({cards:d.cards||[],qSeries:d.qSeries});}
+function folderLightObj(f){return _pick(f,['decks']);}
+function folderLight(f){return JSON.stringify(_pick(f,['decks','mt']));}
+function keyedHashes(o){var r={};Object.keys(o||{}).forEach(function(k){r[k]=hstr(JSON.stringify(o[k]));});return r;}
+// Empreinte de l'état local (sert de « base » : ce que l'appareil a vu au dernier échange avec le cloud)
+function syncSnap(){
+  var s={f:{},d:{},p:keyedHashes(D.progress),e:keyedHashes(D.examProgress),s:hstr(JSON.stringify(D.settings||{}))};
+  (D.folders||[]).forEach(function(f){
+    s.f[f.id]=hstr(folderLight(f));
+    (f.decks||[]).forEach(function(d){s.d[d.id]={l:hstr(deckLight(d)),h:d._nh?null:hstr(deckHeavy(d))};});
+  });
+  return s;
 }
-
-async function saveToCloud(uid){
-  try{
-    var ref = doc(db,'users',uid,'data','main');
-    var clean = JSON.parse(JSON.stringify({folders:D.folders,progress:D.progress||{},examProgress:D.examProgress||{},settings:D.settings||{}}));
-    // Cours dont le J0 n'est pas fait : pas de planning au cloud (aucun rappel côté serveur).
-    clean.folders.forEach(function(f){ (f.decks||[]).forEach(function(d){ if(deckPending(d)) d.plan=[]; }); });
-    // On sépare le contenu lourd (cartes + séries) de chaque cours
-    var heavy={},ids=[];
-    clean.folders.forEach(function(f){ (f.decks||[]).forEach(function(d){
-      heavy[d.id]=JSON.stringify({cards:d.cards||[],qSeries:d.qSeries});
-      ids.push(d.id); delete d.cards; delete d.qSeries;
-    }); });
-    var jobs=[];
-    ids.forEach(function(id){
-      if(_deckSaved[id]===heavy[id])return;
-      var o=JSON.parse(heavy[id]);
-      var pl={cards:fsEnc(o.cards),updatedAt:Date.now()}; if(o.qSeries!==undefined)pl.qSeries=fsEnc(o.qSeries);
-      jobs.push(setDoc(doc(db,'users',uid,'data','deck_'+id),pl).then(function(){_deckSaved[id]=heavy[id];}));
+// Marque ce qui a changé ici depuis le dernier échange (tampon mt) et les suppressions faites ici (tomb)
+function syncStamp(){
+  var b=D._sb,now=Date.now();
+  if(!D.tomb)D.tomb={};
+  if(!b)return;   // premier passage avec cette version : rien à marquer, le cloud fait foi
+  var seen={};
+  (D.folders||[]).forEach(function(f){
+    seen[f.id]=1;
+    if(b.f[f.id]!==hstr(folderLight(f)))f.mt=now;
+    (f.decks||[]).forEach(function(d){
+      seen[d.id]=1;
+      var x=b.d[d.id];
+      if(!x||x.l!==hstr(deckLight(d))||(!d._nh&&x.h!==hstr(deckHeavy(d))))d.mt=now;
     });
-    await Promise.all(jobs);  // les cours d'abord, le document principal ensuite
-    await setDoc(ref,{v:2,folders:fsEnc(clean.folders),progress:fsEnc(clean.progress),examProgress:fsEnc(clean.examProgress),settings:fsEnc(clean.settings||{}),updatedAt:Date.now()});
-    // Nettoyage des cours supprimés
-    _cloudDeckIds.filter(function(id){return ids.indexOf(id)<0;}).forEach(function(id){ deleteDoc(doc(db,'users',uid,'data','deck_'+id)).catch(function(){}); deleteDoc(doc(db,'users',uid,'data','fiche_'+id)).catch(function(){}); delete _deckSaved[id]; });
-    _cloudDeckIds=ids;
+  });
+  Object.keys(b.f).forEach(function(id){if(!seen[id]&&!D.tomb[id])D.tomb[id]=now;});
+  Object.keys(b.d).forEach(function(id){if(!seen[id]&&!D.tomb[id])D.tomb[id]=now;});
+}
+// Fusion clé par clé (sessions en cours…) : la modification locale gagne, sinon le cloud
+function mergeKeyed(L,C,B){
+  L=L||{};C=C||{};B=B||{};var out={},ks={};
+  [L,C,B].forEach(function(o){Object.keys(o).forEach(function(k){ks[k]=1;});});
+  Object.keys(ks).forEach(function(k){
+    var lh=L[k]===undefined?undefined:hstr(JSON.stringify(L[k])),ch=C[k]===undefined?undefined:hstr(JSON.stringify(C[k]));
+    var lc=lh!==B[k],cc=ch!==B[k],v;
+    if(lc&&cc){
+      if(L[k]===undefined)v=C[k];else if(C[k]===undefined)v=L[k];
+      else v=((C[k].savedAt||0)>(L[k].savedAt||0))?C[k]:L[k];
+    } else v=lc?L[k]:C[k];
+    if(v!==undefined)out[k]=v;
+  });
+  return out;
+}
+// Fusionne l'état local D avec le contenu du cloud C (déjà décodé). Ne modifie pas D.
+function syncMerge(C){
+  var now=Date.now(),b=D._sb||{f:{},d:{},p:{},e:{},s:null};
+  var T={};[C.tomb||{},D.tomb||{}].forEach(function(t){Object.keys(t).forEach(function(k){T[k]=Math.max(T[k]||0,t[k]);});});
+  Object.keys(T).forEach(function(k){if(now-T[k]>180*864e5)delete T[k];});
+  function dead(id,mt){return !!T[id]&&T[id]>=(mt||0);}
+  function newer(l,c){return (l.mt||0)>(c.mt||0);}            // à égalité : le cloud
+  var Lf={},Cf={},order=[];
+  (C.folders||[]).forEach(function(f){Cf[f.id]=f;order.push(f.id);});
+  (D.folders||[]).forEach(function(f){Lf[f.id]=f;if(!Cf[f.id])order.push(f.id);});
+  var outF={},fseq=[];
+  order.forEach(function(id){
+    var l=Lf[id],c=Cf[id],w=!c?l:(!l?c:(newer(l,c)?l:c));
+    if(dead(id,w.mt))return;
+    outF[id]={id:id,src:w===l?'l':'c',meta:folderLightObj(w),decks:[]};fseq.push(id);
+  });
+  var E={},seq=[];
+  function add(src,f,d){var e=E[d.id];if(!e){e=E[d.id]={};seq.push(d.id);}e[src]={d:d,fid:f.id};}
+  (C.folders||[]).forEach(function(f){(f.decks||[]).forEach(function(d){add('c',f,d);});});
+  (D.folders||[]).forEach(function(f){(f.decks||[]).forEach(function(d){add('l',f,d);});});
+  var bySid={};
+  seq.forEach(function(id){
+    var e=E[id],l=e.l,c=e.c,w=!c?l:(!l?c:(newer(l.d,c.d)?l:c));
+    if(dead(id,w.d.mt))return;
+    var fid=outF[w.fid]?w.fid:(l&&outF[l.fid]?l.fid:(c&&outF[c.fid]?c.fid:null));
+    if(!fid)return;                                              // matière supprimée
+    var ent={id:id,w:w===l?'l':'c',l:l&&l.d,c:c&&c.d,d:w.d,fid:fid};
+    // même cours importé deux fois (deux appareils en même temps) : on n'en garde qu'un
+    var sid=w.d.sid;
+    if(sid){
+      var o=bySid[sid];
+      if(o){
+        var keepNew=((ent.d.sessions||[]).length>(o.d.sessions||[]).length)||((ent.d.sessions||[]).length===(o.d.sessions||[]).length&&(ent.d.createdAt||0)<(o.d.createdAt||0));
+        var drop=keepNew?o:ent;T[drop.id]=now;drop.dropped=true;
+        if(keepNew)bySid[sid]=ent;
+      } else bySid[sid]=ent;
+    }
+    outF[fid].decks.push(ent);
+  });
+  fseq.forEach(function(fid){outF[fid].decks=outF[fid].decks.filter(function(e){return !e.dropped;});});
+  return {
+    folders:fseq.map(function(id){return outF[id];}),
+    progress:mergeKeyed(D.progress,C.progress,b.p),
+    examProgress:mergeKeyed(D.examProgress,C.examProgress,b.e),
+    settings:(b.s!==null&&hstr(JSON.stringify(D.settings||{}))!==b.s)||C.settings===undefined?(D.settings||{}):C.settings,
+    tomb:T
+  };
+}
+function writeDeckHeavy(uid,f,d){
+  var pl={cards:fsEnc(d.cards||[]),updatedAt:Date.now(),meta:{n:d.name||'',f:f.name||'',sid:d.sid||null}};
+  if(d.qSeries!==undefined)pl.qSeries=fsEnc(d.qSeries);
+  return setDoc(doc(db,'users',uid,'data','deck_'+d.id),pl);
+}
+function readDeckHeavy(uid,id){
+  return getDoc(doc(db,'users',uid,'data','deck_'+id)).then(function(s){
+    if(!s.exists())return null;var x=s.data();
+    return {cards:fsDec(x.cards||[]),qSeries:x.qSeries!==undefined?fsDec(x.qSeries):undefined};
+  });
+}
+function readCloudMain(uid){
+  return getDoc(doc(db,'users',uid,'data','main')).then(function(s){
+    if(!s.exists())return {exists:false,C:{folders:[]},ts:0};
+    var x=s.data();
+    if(x&&x.folders&&x.v!==2)return {legacy:true};
+    return {exists:true,ts:x.updatedAt||0,C:{folders:fsDec(x.folders||[]),progress:fsDec(x.progress||{}),examProgress:fsDec(x.examProgress||{}),settings:x.settings!==undefined?fsDec(x.settings):undefined,tomb:x.tomb||{}}};
+  });
+}
+// Un échange complet : relire le cloud, fusionner, écrire, adopter le résultat
+async function syncNow(uid){
+  if(SYNC.busy){SYNC.again=true;return false;}
+  SYNC.busy=true;
+  try{
+    for(var attempt=0;attempt<4;attempt++){
+      syncStamp();
+      var pre=syncSnap();
+      var R=await readCloudMain(uid);
+      if(R.legacy){await legacyLoad(uid);D._sb=syncSnap();dbSave(true);return true;}
+      var M=syncMerge(R.C);
+      // 1) cartes/QCM changés ici : on les envoie d'abord
+      var jobs=[];
+      M.folders.forEach(function(F){F.decks.forEach(function(e){
+        if(e.w!=='l'||e.l._nh)return;
+        var x=D._sb&&D._sb.d[e.id];
+        var inCloud=!!e.c;
+        if(!inCloud||(x&&x.h!==hstr(deckHeavy(e.l)))){
+          var fo=(D.folders||[]).find(function(f){return f.id===F.id;})||F.meta;
+          jobs.push(writeDeckHeavy(uid,fo,e.l));
+        }
+      });});
+      await Promise.all(jobs);
+      // 2) document principal, seulement si personne ne l'a modifié entre-temps
+      var light=M.folders.map(function(F){var f=Object.assign({},F.meta);f.decks=F.decks.map(function(e){var d=deckLightObj(e.d);try{if(deckPending(e.d))d.plan=[];}catch(_){}return d;});return f;});  // cours pas encore démarré : pas de planning au cloud (aucun rappel côté serveur)
+      var ref=doc(db,'users',uid,'data','main'),conflict=false,ts=Date.now();
+      await runTransaction(db,async function(tx){
+        var s=await tx.get(ref);
+        var cur=s.exists()?(s.data().updatedAt||0):0;
+        if(cur!==R.ts){conflict=true;return;}
+        tx.set(ref,{v:2,folders:fsEnc(light),progress:fsEnc(M.progress),examProgress:fsEnc(M.examProgress),settings:fsEnc(M.settings||{}),tomb:M.tomb,updatedAt:ts});
+      });
+      if(conflict)continue;   // un autre appareil vient d'écrire : on recommence la fusion
+      // 3) suppressions décidées : on nettoie les cartes et fiches des cours supprimés
+      Object.keys(M.tomb).forEach(function(id){
+        if(R.C.tomb&&R.C.tomb[id])return;
+        deleteDoc(doc(db,'users',uid,'data','deck_'+id)).catch(function(){});
+        deleteDoc(doc(db,'users',uid,'data','fiche_'+id)).catch(function(){});
+      });
+      await syncAdopt(uid,M,pre);
+      SYNC.last=Date.now();
+      return true;
+    }
+    return false;
   } catch(e){
-    console.error('Erreur sauvegarde:',e);
-    try{ toast('⚠️ Sauvegarde cloud impossible — tes données restent sur cet appareil'); }catch(_){}
+    console.error('Erreur synchro:',e);
+    return false;
+  } finally {
+    SYNC.busy=false;
+    if(SYNC.again){SYNC.again=false;syncSoon(800);}
   }
 }
+// Remplace D par le résultat de la fusion, en gardant les mêmes objets (l'écran ouvert ne casse pas)
+async function syncAdopt(uid,M,pre){
+  var Lf={},Ld={};
+  (D.folders||[]).forEach(function(f){Lf[f.id]=f;(f.decks||[]).forEach(function(d){Ld[d.id]=d;});});
+  var now=syncSnap(),changedDuring=false,fetches=[],touched=false;
+  var folders=M.folders.map(function(F){
+    var f=Lf[F.id];
+    if(!f){f={};touched=true;}
+    if(F.src==='c'){
+      if(folderLight(f)!==JSON.stringify(_pick(F.meta,['mt'])))touched=true;
+      Object.keys(f).forEach(function(k){if(k!=='decks')delete f[k];});Object.assign(f,F.meta);
+    }
+    f.decks=F.decks.map(function(e){
+      var d=Ld[e.id];
+      // modifié pendant l'échange : on garde la version locale, un nouvel échange suivra
+      if(d&&pre.d[e.id]&&now.d[e.id]&&(pre.d[e.id].l!==now.d[e.id].l||pre.d[e.id].h!==now.d[e.id].h)){changedDuring=true;return d;}
+      if(e.w==='l'&&d&&!d._nh)return d;
+      var c=e.d,needHeavy=!d||d._nh||(d.mt||0)!==(c.mt||0)||!c.mt;
+      if(!d){d={};touched=true;}
+      var keepCards=d.cards,keepQ=d.qSeries,hadQ=('qSeries' in d);
+      if(deckLight(d)!==deckLight(c)){touched=true;}
+      Object.keys(d).forEach(function(k){delete d[k];});
+      Object.assign(d,deckLightObj(c));
+      if(keepCards!==undefined)d.cards=keepCards;else d.cards=[];
+      if(hadQ)d.qSeries=keepQ;
+      if(needHeavy){
+        fetches.push(readDeckHeavy(uid,e.id).then(function(h){
+          if(h){d.cards=h.cards;if(h.qSeries!==undefined)d.qSeries=h.qSeries;else delete d.qSeries;delete d._nh;touched=true;}
+          else if(!d.cards)d.cards=[];
+        }).catch(function(err){console.warn('cartes',e.id,err);if(!keepCards)d._nh=1;}));
+      }
+      return d;
+    });
+    return f;
+  });
+  if(folders.length!==(D.folders||[]).length)touched=true;
+  await Promise.all(fetches);
+  D.folders=folders;
+  D.progress=M.progress;D.examProgress=M.examProgress;D.settings=M.settings||{};D.tomb=M.tomb;
+  D._sb=syncSnap();
+  // les cours gardés en local pendant l'échange restent « à envoyer »
+  if(changedDuring){Object.keys(pre.d).forEach(function(id){if(D._sb.d[id])D._sb.d[id]=pre.d[id];});SYNC.again=true;}
+  dbSave(true);
+  if(touched&&window.__appReady){try{syncRefreshUI();}catch(e){}}
+}
+function syncRefreshUI(){
+  if(typeof CUR!=='undefined'&&CUR.deck)return;   // on ne rafraîchit pas en plein cours
+  try{if(typeof renderHome==='function')renderHome();}catch(e){}
+  try{if(CUR.folder&&typeof renderFolder==='function')renderFolder();}catch(e){}
+}
+function syncSoon(ms){
+  if(!CURRENT_USER)return;
+  clearTimeout(SYNC.timer);
+  SYNC.timer=setTimeout(function(){SYNC.timer=null;syncNow(CURRENT_USER.uid);},ms==null?1500:ms);
+}
+// Ancien chargement simple, gardé pour la migration d'un très vieux format et en secours hors ligne
+async function legacyLoad(uid){
+  var ref=doc(db,'users',uid,'data','main');
+  var snap=await getDoc(ref);
+  if(!snap.exists())return;
+  var data=snap.data();
+  if(!data||!data.folders)return;
+  var legacy=(data.v!==2);
+  var folders=fsDec(data.folders);
+  if(legacy){
+    try{ await setDoc(doc(db,'users',uid,'data','backup_v1'),data); }catch(e){ console.error('Backup impossible',e); throw e; }
+  } else {
+    var jobs=[];
+    folders.forEach(function(f){(f.decks||[]).forEach(function(d){
+      jobs.push(readDeckHeavy(uid,d.id).then(function(h){d.cards=h?h.cards:[];if(h&&h.qSeries!==undefined)d.qSeries=h.qSeries;}).catch(function(){d.cards=d.cards||[];d._nh=1;}));
+    });});
+    await Promise.all(jobs);
+  }
+  D.folders=folders;
+  D.progress=fsDec(data.progress||{});
+  D.examProgress=fsDec(data.examProgress||{});
+  D.settings=fsDec(data.settings||{});
+  D.tomb=data.tomb||{};
+  if(legacy){
+    // ancien format : on écrit tout au nouveau format
+    await Promise.all(D.folders.map(function(f){return Promise.all((f.decks||[]).map(function(d){return writeDeckHeavy(uid,f,d);}));}));
+    var light=D.folders.map(function(f){var o=Object.assign({},f);o.decks=(f.decks||[]).map(deckLightObj);return o;});
+    await setDoc(ref,{v:2,folders:fsEnc(light),progress:fsEnc(D.progress),examProgress:fsEnc(D.examProgress),settings:fsEnc(D.settings),tomb:D.tomb,updatedAt:Date.now()});
+  }
+}
+async function loadFromCloud(uid){
+  dbLoad();                                   // état local + base du dernier échange
+  if(D._sbUid&&D._sbUid!==uid){D._sb=null;D.folders=[];D.progress={};D.examProgress={};D.tomb={};}
+  D._sbUid=uid;
+  var ok=await syncNow(uid);
+  if(!ok&&!(D.folders&&D.folders.length)){
+    try{await legacyLoad(uid);}catch(e){console.error('Erreur chargement:',e);}
+  }
+}
+// Gardé pour compatibilité avec le reste de l'appli
+async function saveToCloud(uid){ return syncNow(uid); }
 
 // Fiches de cours : un document par cours, hors du document principal
 window.ficheStore = {
@@ -4686,20 +4999,22 @@ window.ficheStore = {
 };
 
 var _origDbSave = window.dbSave;
-window.dbSave = function(){
+window.dbSave = function(fromSync){
   _origDbSave();
-  if(CURRENT_USER){
-    clearTimeout(SAVE_TIMEOUT);
-    SAVE_TIMEOUT=setTimeout(function(){ SAVE_TIMEOUT=null; saveToCloud(CURRENT_USER.uid); },1500);
-  }
+  if(CURRENT_USER&&fromSync!==true) syncSoon(1500);
 };
-// Si tu quittes l'appli avant les 1,5 s, on envoie tout de suite au cloud
 document.addEventListener('visibilitychange', function(){
-  if(document.visibilityState==='hidden' && CURRENT_USER && SAVE_TIMEOUT){
-    clearTimeout(SAVE_TIMEOUT); SAVE_TIMEOUT=null;
-    saveToCloud(CURRENT_USER.uid);
+  if(!CURRENT_USER)return;
+  if(document.visibilityState==='hidden'){
+    // tu quittes l'appli : on envoie tout de suite ce qui attend
+    if(SYNC.timer){clearTimeout(SYNC.timer);SYNC.timer=null;syncNow(CURRENT_USER.uid);}
+  } else {
+    // tu reviens dans l'appli : on se remet à jour avant tout
+    if(Date.now()-SYNC.last>1500)syncSoon(0);
   }
 });
+window.addEventListener('online',function(){syncSoon(500);});
+window.addEventListener('focus',function(){if(CURRENT_USER&&Date.now()-SYNC.last>30000)syncSoon(0);});
 
 onAuthStateChanged(auth, async function(user){
   if(user){
@@ -4710,6 +5025,7 @@ onAuthStateChanged(auth, async function(user){
     await loadFromCloud(user.uid);
     showAppScreen();
     window.init();
+    window.__appReady=true;
     toast('Connecté ✓');
     setTimeout(function(){ try{ if(window.autoImport) window.autoImport(false); }catch(e){ console.warn(e); } }, 2500);
   } else {

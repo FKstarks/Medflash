@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v12.5-2026-10-30-barre">
+<meta name="app-build" content="v13.0-2026-10-30-glass">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -512,6 +512,89 @@ nav{padding-top:calc(12px + env(safe-area-inset-top,0px))}
   .mobile-nav button{flex:0 0 auto;flex-direction:row;gap:7px;padding:9px 14px;font-size:13px}
   .mobile-nav button span{font-size:17px}
 }
+
+/* ===== v13 — Liquid Glass (thème clair) ===== */
+body.light{
+  --bg:#eef0f8;
+  --s1:rgba(255,255,255,.58);--s2:rgba(255,255,255,.42);--bd:rgba(120,124,170,.16);
+  --tx:#14162a;--tx2:#4e5470;--tx3:#8a90ad;
+  --g-bg:rgba(255,255,255,.52);--g-bg2:rgba(255,255,255,.72);
+  --g-edge:rgba(255,255,255,.75);
+  --g-hi:inset 0 1px 0 rgba(255,255,255,.95),inset 0 0 0 .5px rgba(255,255,255,.6),inset 0 -10px 24px -18px rgba(255,255,255,.9);
+  --g-sh:0 10px 34px -10px rgba(52,46,140,.18),0 2px 6px rgba(52,46,140,.05);
+  --g-blur:saturate(190%) blur(26px);
+  --sh:var(--g-sh);--sh2:0 4px 16px -6px rgba(52,46,140,.14);
+  background:#eef0f8;
+}
+/* fond coloré flou : c'est lui qui donne vie au verre */
+body.light::before{background:
+  radial-gradient(42% 38% at 12% 8%,rgba(124,108,255,.42),transparent 70%),
+  radial-gradient(38% 34% at 92% 14%,rgba(255,140,190,.32),transparent 70%),
+  radial-gradient(44% 40% at 78% 88%,rgba(90,190,255,.34),transparent 70%),
+  radial-gradient(36% 32% at 8% 92%,rgba(120,230,190,.30),transparent 70%),
+  linear-gradient(160deg,#f3f1ff 0%,#eef3fb 50%,#f6f0f8 100%);z-index:0}
+
+/* surfaces en verre */
+body.light :is(.deck-card,.folder-card,.panel-card,.dash-kpi,.subject-overview-kpi,.suivi-stat,.suivi-row,.review-section,
+  .result-card,.empty-soft,.fc-item,.cal-cell,.stat-box,.folder-hard,.info-box,.week-grid){
+  background:var(--g-bg);border:1px solid var(--g-edge);
+  -webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);box-shadow:var(--g-hi),var(--g-sh)}
+body.light :is(.deck-card,.folder-card,.panel-card,.dash-kpi,.review-section,.result-card){border-radius:24px}
+body.light :is(.deck-card,.folder-card):hover{background:var(--g-bg2);transform:translateY(-2px)}
+body.light .folder-hard{background:linear-gradient(135deg,rgba(255,120,120,.16),rgba(255,255,255,.5))}
+body.light .info-box{background:linear-gradient(135deg,rgba(124,108,255,.14),rgba(255,255,255,.5))}
+body.light .dash-kpi.start{background:linear-gradient(135deg,rgba(255,190,90,.20),rgba(124,108,255,.12),rgba(255,255,255,.45))}
+body.light .today-row{background:rgba(255,255,255,.5);border:1px solid var(--g-edge);box-shadow:var(--g-hi)}
+body.light .add-card{background:rgba(255,255,255,.22);border:1.5px dashed rgba(110,100,220,.3);border-radius:24px;-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur)}
+body.light .dash-kpi .dk-icon,body.light .week-head{background:rgba(255,255,255,.6);box-shadow:var(--g-hi)}
+body.light .gauge-bar{background:rgba(110,110,170,.12)}
+
+/* barre du haut */
+body.light nav{background:rgba(255,255,255,.42);-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);
+  border-bottom:1px solid rgba(255,255,255,.6);box-shadow:0 1px 0 rgba(110,110,170,.08),0 8px 30px -18px rgba(52,46,140,.25)}
+/* menu latéral (Mac, iPad paysage) : panneau flottant */
+@media(min-width:900px){
+  body.light .app-sidebar{top:10px;bottom:10px;left:10px;width:190px;border-radius:26px;background:rgba(255,255,255,.46);
+    border:1px solid var(--g-edge);-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);box-shadow:var(--g-hi),var(--g-sh)}
+  body.light .side-item{border-radius:14px;color:var(--tx2)}
+  body.light .side-item.active{background:rgba(255,255,255,.8);color:var(--ac2);box-shadow:var(--g-hi),0 4px 14px -6px rgba(52,46,140,.25)}
+}
+/* barre du bas */
+body.light .mobile-nav{background:rgba(255,255,255,.5);border:1px solid var(--g-edge);-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);
+  box-shadow:var(--g-hi),0 12px 36px -10px rgba(52,46,140,.28)}
+body.light .mobile-nav button.active{background:rgba(255,255,255,.85);color:var(--ac2);box-shadow:var(--g-hi),0 3px 12px -4px rgba(52,46,140,.25)}
+
+/* onglets et sélecteurs : segments en verre avec pastille qui glisse */
+body.light :is(.tabs,.seg){background:rgba(255,255,255,.34);border:1px solid var(--g-edge);border-radius:999px;padding:4px;
+  -webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);box-shadow:var(--g-hi),var(--sh2)}
+body.light .tab{border-radius:999px;transition:background .25s,color .25s,box-shadow .25s}
+body.light .seg button{border-radius:999px}
+body.light :is(.tab.active,.seg button.active,.seg button.on){background:rgba(255,255,255,.92);color:var(--tx);box-shadow:var(--g-hi),0 4px 14px -4px rgba(52,46,140,.22)}
+
+/* boutons */
+body.light .btn{border-radius:999px}
+body.light :is(.btn-ghost,.theme-btn,.mini-btn,.fmt-btn,.nav-btn){background:rgba(255,255,255,.5);border:1px solid var(--g-edge);color:var(--tx2);
+  -webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);box-shadow:var(--g-hi),0 2px 8px -3px rgba(52,46,140,.14)}
+body.light .theme-btn,body.light .nav-btn{border-radius:999px}
+body.light :is(.btn-ghost,.theme-btn,.nav-btn):hover{background:rgba(255,255,255,.8);color:var(--tx)}
+body.light .btn-primary{background:linear-gradient(180deg,#8178ff,#5d52f2);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -2px 6px rgba(40,20,140,.25),0 6px 18px -6px rgba(93,82,242,.55)}
+body.light .jbadge{border:1px solid rgba(255,255,255,.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.7);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+body.light :is(input,textarea,select){background:rgba(255,255,255,.6)!important;border-color:var(--g-edge)!important;box-shadow:inset 0 1px 3px rgba(52,46,140,.08)}
+
+/* lecture : on garde le contenu bien opaque pour les yeux */
+body.light .card-face{background:rgba(255,255,255,.9);border:1px solid var(--g-edge);box-shadow:var(--g-hi),0 18px 46px -16px rgba(52,46,140,.28)}
+body.light #ficheFrame{border:1px solid var(--g-edge)!important;border-radius:22px!important;box-shadow:var(--g-sh)}
+body.light .modal{background:rgba(255,255,255,.82);border:1px solid var(--g-edge);border-radius:28px;
+  -webkit-backdrop-filter:saturate(180%) blur(30px);backdrop-filter:saturate(180%) blur(30px);box-shadow:var(--g-hi),0 30px 80px -20px rgba(40,30,120,.35)}
+body.light .overlay{background:rgba(40,40,80,.18)}
+body.light .toast{background:rgba(255,255,255,.75);border:1px solid var(--g-edge);border-radius:999px;-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);box-shadow:var(--g-hi),var(--g-sh)}
+
+/* titres longs : les colonnes ne débordent plus de l'écran */
+.dashboard-main-grid>*,.dashboard-side-stack>*,.dashboard-bottom-grid>*,.home-two-col>*,.review-columns>*{min-width:0}
+@media(max-width:899px){.dashboard-main-grid,.review-columns,.home-two-col{grid-template-columns:minmax(0,1fr)}}
+@media(min-width:900px){body.light .side-logo{font-size:18px;white-space:nowrap}}
+@media(max-width:640px){body.light .tabs{border-radius:22px}body.light .tab{border-radius:16px}}
 </style>
 </head>
 <body class="logged-out">

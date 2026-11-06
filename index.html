@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v16.0-2026-11-06-archives">
+<meta name="app-build" content="v16.1-2026-11-06-fiche-large">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -4298,8 +4298,14 @@ function renderFiche(){
     var fr=document.getElementById('ficheFrame');
     // pas de script dans la fiche (sandbox) ; on ajuste juste la hauteur pour éviter un double défilement
     fr.onload=function(){try{var h=fr.contentDocument.documentElement.scrollHeight;if(h>300)fr.style.height=(h+12)+'px';}catch(e){}};
-    fr.srcdoc=f.html;
+    fr.srcdoc=ficheWide(f.html);
   });
+}
+function ficheWide(h){
+  // fiches anciennes : leur conteneur était limité (~800px) → on l'élargit sur grand écran (Mac/iPad paysage)
+  var css='<style id="mfWide">@media(min-width:900px){body{max-width:none!important}body>.page,body>.wrap,body>.container,body>main,body>article,body>.fiche,body>div:only-child{max-width:1180px!important;width:auto!important;margin-left:auto!important;margin-right:auto!important}}</style>';
+  h=String(h||'');
+  return /<\/head>/i.test(h)?h.replace(/<\/head>/i,css+'</head>'):css+h;
 }
 function openFicheFull(){
   if(!CUR.deck)return;
@@ -4316,7 +4322,7 @@ function openFicheFull(){
       '<button onclick="printFiche()" style="border:1px solid rgba(255,255,255,.4);border-radius:10px;padding:9px 14px;background:transparent;color:#fff;font:600 14px inherit;cursor:pointer">Imprimer</button></div>'+
       '<iframe id="ficheFullFrame" title="Fiche de cours" sandbox="allow-same-origin allow-modals" style="flex:1;width:100%;border:0;background:#F6F5FB"></iframe>';
     document.body.appendChild(ov);
-    document.getElementById('ficheFullFrame').srcdoc=f.html;
+    document.getElementById('ficheFullFrame').srcdoc=ficheWide(f.html);
     document.addEventListener('keydown',ficheFullEsc);
   });
 }

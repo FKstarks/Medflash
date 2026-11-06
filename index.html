@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v15.1-2026-11-06-images">
+<meta name="app-build" content="v16.0-2026-11-06-archives">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -841,6 +841,14 @@ nav .nav-r{margin-left:auto}
 .cv-photo .pcap b,.cv-photo .pcap span{color:#fff!important;opacity:1!important;text-shadow:0 1px 8px rgba(0,0,0,.35)}
 .mf-hero .hart i.hph{position:absolute;top:7%;left:50%;height:86%;aspect-ratio:1;transform:translateX(-50%);border-radius:22px;background:center/cover no-repeat;box-shadow:0 18px 40px -16px rgba(0,0,0,.35);filter:none}
 @media(max-width:640px){.mf-hero .hart i.hph{top:3%;height:76%}}
+
+.arch-box{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.arch-sec{margin-top:26px}
+.arch-sec summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;font:700 21px var(--font);letter-spacing:-.02em;margin-bottom:12px}
+.arch-sec summary::-webkit-details-marker{display:none}
+.arch-sec summary::after{content:"›";color:var(--tx3);font-weight:400;transition:transform .2s}
+.arch-sec[open] summary::after{transform:rotate(90deg)}
+.poster.arch .cv{filter:saturate(.55) brightness(.97)}
 </style>
 </head>
 <body class="logged-out">
@@ -942,6 +950,7 @@ nav .nav-r{margin-left:auto}
   </div>
   <div class="subjects-overview" id="subjectsOverview"></div>
   <div class="subjects-grid" id="foldersGrid"></div>
+  <div id="archBox"></div>
   <div class="mf-credit">Illustrations : Servier Medical Art (smart.servier.com), licence CC BY 4.0</div>
 </div>
 
@@ -1144,6 +1153,7 @@ nav .nav-r{margin-left:auto}
       </div>
     </div>
     <div class="m-btns">
+      <button class="btn btn-ghost" id="mFolderArch" style="margin-right:auto;display:none" onclick="toggleArchiveFromModal()">Archiver la matière</button>
       <button class="btn btn-ghost" onclick="closeModal('mFolder')">Annuler</button>
       <button class="btn btn-primary" id="mFolderSave" onclick="saveFolder()">Créer</button>
     </div>
@@ -1872,7 +1882,7 @@ function onAdd(){if(!CUR.folder&&!CUR.deck)openFolderModal();else if(CUR.folder&
 // Renvoie toutes les échéances non faites, avec leur contexte
 function allDue(){
   var out=[],t=today();
-  D.folders.forEach(function(f){
+  LF().forEach(function(f){
     (f.decks||[]).forEach(function(d){
       var pl=(deckPending(d)?[]:(d.plan||[])).filter(function(e){return !e.done;});
       pl.sort(function(a,b){return a.date<b.date?-1:1;});
@@ -1889,7 +1899,7 @@ function allDue(){
 }
 function eventsOn(dateStr){
   var out=[];
-  D.folders.forEach(function(f){
+  LF().forEach(function(f){
     (f.decks||[]).forEach(function(d){
       (deckPending(d)?[]:(d.plan||[])).forEach(function(e){
         if(e.date===dateStr)out.push({folder:f,deck:d,entry:e});
@@ -1914,7 +1924,7 @@ function renderHome(){
 function dashboardNumbers(){
   var due=allDue().filter(function(x){return x.entry.date<=today();});
   var dueCards=due.reduce(function(n,x){return n+(x.deck.cards||[]).length;},0);
-  var pending=[];D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){if(deckPending(d)&&(d.cards||[]).length)pending.push({folder:f,deck:d});});});
+  var pending=[];LF().forEach(function(f){(f.decks||[]).forEach(function(d){if(deckPending(d)&&(d.cards||[]).length)pending.push({folder:f,deck:d});});});
   var sessions=[];D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){(d.sessions||[]).forEach(function(x){sessions.push(x);});});});
   sessions.sort(function(a,b){return b.date-a.date;});var recent=sessions.slice(0,20);
   var rate=recent.length?Math.round(recent.reduce(function(a,x){return a+(x.score||0);},0)/recent.length):0;
@@ -1957,12 +1967,12 @@ function renderSemesterMini(){
       '<div style="font-size:12px;color:var(--tx2)">'+toLearn+' ronéo'+(toLearn>1?'s':'')+' à apprendre'+(wait?' · 🕐 '+wait+' en attente de ronéo':'')+' · '+pct+'%</div>';
     return;
   }
-  var started=0,total=0;D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){total++;if(!deckPending(d))started++;});});var pct=total?Math.round(started/total*100):0;
+  var started=0,total=0;LF().forEach(function(f){(f.decks||[]).forEach(function(d){total++;if(!deckPending(d))started++;});});var pct=total?Math.round(started/total*100):0;
   el.innerHTML='<div class="panel-head"><h3>Avancement MedFlash</h3><button class="mini-link" onclick="openSuivi()">Suivi semestre</button></div><div style="font-family:var(--font);font-size:24px;font-weight:800">'+started+' / '+total+' <span style="font:500 12px var(--font);color:var(--tx2)">cours démarrés</span></div><div class="gauge-bar" style="margin:11px 0 8px"><div class="gauge-fill g-gr" style="width:'+pct+'%"></div></div><div style="font-size:12px;color:var(--tx2)">Relie ton Suivi pour voir ton rythme d\'apprentissage (appris / faits à la fac).</div>';
 }
 function pendingHtml(){
   var rows=[];
-  D.folders.forEach(function(f){
+  LF().forEach(function(f){
     (f.decks||[]).forEach(function(d){
       if(deckPending(d)&&(d.cards||[]).length)rows.push({folder:f,deck:d});
     });
@@ -1990,7 +2000,7 @@ function renderReviews(){
   var body=document.getElementById('reviewsBody');if(!body)return;var t=today();
   var due=allDue().filter(function(x){return x.entry.date<=t;});
   var future=allDue().filter(function(x){return x.entry.date>t;}).slice(0,12);
-  var pending=[];D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){if(deckPending(d)&&(d.cards||[]).length)pending.push({folder:f,deck:d});});});
+  var pending=[];LF().forEach(function(f){(f.decks||[]).forEach(function(d){if(deckPending(d)&&(d.cards||[]).length)pending.push({folder:f,deck:d});});});
   var dueHtml=due.length?due.map(homeDueRow).join(''):'<div class="empty-soft">✓ Rien à réviser aujourd\'hui.</div>';
   var pendHtml=pending.length?pending.map(function(x){return '<div class="today-row" onclick="jumpTo(\''+x.folder.id+'\',\''+x.deck.id+'\')"><div class="tr-dot" style="background:'+x.folder.color+'"></div><div class="tr-main"><div class="tr-t">'+esc(x.deck.name)+'</div><div class="tr-s">'+fIco(x.folder)+esc(x.folder.name)+' · '+(x.deck.cards||[]).length+' cartes prêtes</div></div><span class="tag tag-soon">J0 à faire</span></div>';}).join(''):'<div class="empty-soft">Aucun cours à démarrer.</div>';
   var futHtml=future.length?future.map(function(x){return '<div class="today-row" onclick="jumpTo(\''+x.folder.id+'\',\''+x.deck.id+'\')"><div class="tr-dot" style="background:'+x.folder.color+'"></div><div class="tr-main"><div class="tr-t">'+esc(x.deck.name)+'</div><div class="tr-s">'+fIco(x.folder)+esc(x.folder.name)+' · J'+x.entry.off+'</div></div><span class="tag tag-soon">'+prettyD(x.entry.date)+'</span></div>';}).join(''):'<div class="empty-soft">Aucune échéance à venir.</div>';
@@ -2626,6 +2636,12 @@ function reviewFailed(){
 // ════════════════════════════════════════
 function saveSession(mode,pctOverride,yesOverride,totalOverride){
   if(!CUR.deck)return;
+  if(CUR.folder&&CUR.folder.archived){
+    var FRa=(mode==='classic'&&ST.first&&Object.keys(ST.first).length)?ST.first:ST.results,ka=Object.keys(FRa);
+    if(!CUR.deck.sessions)CUR.deck.sessions=[];
+    CUR.deck.sessions.push({date:Date.now(),score:pctOverride!==undefined?pctOverride:scorePct(FRa),yes:yesOverride!==undefined?yesOverride:ka.filter(function(k){return FRa[k];}).length,total:totalOverride!==undefined?totalOverride:ka.length,mode:mode,arch:true});
+    dbSave();toast('Session enregistrée (matière archivée : pas de planning)');renderFolder();switchTab('stats');return;
+  }
   var wasPending=activateDeck(CUR.deck); // J0 : le planning démarre aujourd'hui
   var FR=(mode==='classic'&&ST.first&&Object.keys(ST.first).length)?ST.first:ST.results;
   var pct=pctOverride!==undefined?pctOverride:scorePct(FR);
@@ -3417,7 +3433,7 @@ function heroItems(){
   var t=today(),due=allDue().filter(function(x){return x.entry.date<=t;});
   var out=due.map(function(x){return {f:x.folder,d:x.deck,late:diffDays(x.entry.date,t),off:x.entry.off,kind:'due'};});
   if(!out.length){
-    D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){if(out.length<8&&deckPending(d)&&(d.cards||[]).length)out.push({f:f,d:d,kind:'new'});});});
+    LF().forEach(function(f){(f.decks||[]).forEach(function(d){if(out.length<8&&deckPending(d)&&(d.cards||[]).length)out.push({f:f,d:d,kind:'new'});});});
   }
   return out;
 }
@@ -3472,7 +3488,7 @@ function shelfItem(f,d,badge,bcls){
 }
 function renderDashboard(){
   var box=document.getElementById('homeDashboard');if(!box)return;var n=dashboardNumbers(),t=today();
-  var nx=D.folders.filter(function(f){return f.examDate&&f.examDate>=t;}).sort(function(a,b){return a.examDate<b.examDate?-1:1;})[0];
+  var nx=LF().filter(function(f){return f.examDate&&f.examDate>=t;}).sort(function(a,b){return a.examDate<b.examDate?-1:1;})[0];
   box.innerHTML='<div class="kpi">'+ic('cards')+'<b>'+n.dueCards+'</b><span>cartes à réviser aujourd\'hui · '+n.dueCourses+' cours</span></div>'+
     '<div class="kpi">'+ic('target')+'<b>'+n.rate+' %</b><span>de réussite sur les dernières sessions</span></div>'+
     '<div class="kpi click" onclick="openReviews()">'+ic('sparkles')+'<b>'+n.pending.length+'</b><span>cours à démarrer · J0 à faire</span></div>'+
@@ -3483,7 +3499,7 @@ function renderHomeToday(){
   renderHero();
   var list=document.getElementById('homeDueList');
   if(list)list.innerHTML=due.length?due.map(function(x){var l=diffDays(x.entry.date,t);return shelfItem(x.folder,x.deck,l>0?'Retard '+l+' j':'J'+x.entry.off,l>0?'late':'');}).join(''):'<div class="sh-empty">Rien à réviser aujourd\'hui</div>';
-  var pend=[];D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){if(deckPending(d)&&(d.cards||[]).length)pend.push(shelfItem(f,d,'J0','new'));});});
+  var pend=[];LF().forEach(function(f){(f.decks||[]).forEach(function(d){if(deckPending(d)&&(d.cards||[]).length)pend.push(shelfItem(f,d,'J0','new'));});});
   var pb=document.getElementById('homePending');if(pb){pb.innerHTML=pend.join('');var ps=document.getElementById('homePendingSec');if(ps)ps.style.display=pend.length?'':'none';}
   var box=document.getElementById('homePendingPanel');if(box){box.innerHTML='<div class="panel-head"><h3>Progression par matière</h3><button class="mini-link" onclick="openSubjects()">Matières</button></div>'+subjectProgressHtml();}
   var sub=document.getElementById('homeSub');if(sub)sub.textContent=due.length?(due.length+' révision'+(due.length>1?'s':'')+' à faire aujourd\'hui'):'Rien à réviser aujourd\'hui';
@@ -3491,38 +3507,39 @@ function renderHomeToday(){
   renderSideSubjects();
 }
 function subjectProgressHtml(){
-  if(!D.folders.length)return '<div class="dashboard-empty">Aucune matière</div>';
-  return D.folders.map(function(f){var ds=f.decks||[],tot=ds.length,done=ds.filter(function(d){return !deckPending(d);}).length,p=tot?Math.round(done/tot*100):0;return '<div class="subject-progress-row" style="cursor:pointer" onclick="openFolder(\''+f.id+'\')">'+fIco(f)+'<div class="sp-name">'+esc(f.name)+'</div><div class="sp-bar"><i style="width:'+p+'%"></i></div><div class="sp-pct">'+p+'%</div></div>';}).join('');
+  if(!LF().length)return '<div class="dashboard-empty">Aucune matière</div>';
+  return LF().map(function(f){var ds=f.decks||[],tot=ds.length,done=ds.filter(function(d){return !deckPending(d);}).length,p=tot?Math.round(done/tot*100):0;return '<div class="subject-progress-row" style="cursor:pointer" onclick="openFolder(\''+f.id+'\')">'+fIco(f)+'<div class="sp-name">'+esc(f.name)+'</div><div class="sp-bar"><i style="width:'+p+'%"></i></div><div class="sp-pct">'+p+'%</div></div>';}).join('');
 }
 function renderExamMini(){
   var el=document.getElementById('examMini');if(!el)return;var t=today();
-  var fs=D.folders.filter(function(f){return f.examDate&&f.examDate>=t;}).sort(function(a,b){return a.examDate<b.examDate?-1:1;}).slice(0,4);
+  var fs=LF().filter(function(f){return f.examDate&&f.examDate>=t;}).sort(function(a,b){return a.examDate<b.examDate?-1:1;}).slice(0,4);
   el.innerHTML='<div class="panel-head"><h3>Prochains partiels</h3><button class="mini-link" onclick="openCalendar()">Planning</button></div>'+
     (fs.length?fs.map(function(f){var d=diffDays(t,f.examDate);return '<div class="subject-progress-row" style="cursor:pointer" onclick="openFolder(\''+f.id+'\')">'+fIco(f)+'<div class="sp-name">'+esc(f.name)+'<div style="font-size:12px;color:var(--tx2);font-weight:400">'+prettyD(f.examDate)+'</div></div><span class="tag '+(d<=7?'tag-late':'tag-soon')+'">J-'+d+'</span></div>';}).join(''):'<div style="font-size:13px;color:var(--tx2)">Aucun partiel renseigné.</div>');
 }
 // barre latérale (Mac, iPad paysage) : la liste des matières avec leur pochette
 function renderSideSubjects(){
   var el=document.getElementById('sideSubjects');if(!el)return;
-  el.innerHTML=D.folders.length?'<div class="side-h">Mes matières</div>'+D.folders.map(function(f){
+  el.innerHTML=LF().length?'<div class="side-h">Mes matières</div>'+LF().map(function(f){
     return '<button class="side-item side-subj'+(CUR.folder&&CUR.folder.id===f.id&&document.getElementById('sFolder').classList.contains('active')?' active':'')+'" onclick="openFolder(\''+f.id+'\')">'+fIco(f)+'<span>'+esc(f.name)+'</span></button>';
   }).join(''):'';
 }
 
 // ── MATIÈRES ──
+var SHOW_ARCH=false;
 function renderSubjects(){
   var g=document.getElementById('foldersGrid');if(!g)return;
   var t=today(),totalCourses=0,totalCards=0,pendingTotal=0;
-  D.folders.forEach(function(f){
+  LF().forEach(function(f){
     totalCourses+=(f.decks||[]).length;
     totalCards+=(f.decks||[]).reduce(function(s,d){return s+(d.cards||[]).length;},0);
     (f.decks||[]).forEach(function(d){if(deckPending(d)&&(d.cards||[]).length)pendingTotal++;});
   });
   var ov=document.getElementById('subjectsOverview');
-  if(ov)ov.innerHTML='<div class="subject-overview-kpi"><b>'+D.folders.length+'</b><span>matières</span></div>'+
+  if(ov)ov.innerHTML='<div class="subject-overview-kpi"><b>'+LF().length+'</b><span>matières</span></div>'+
     '<div class="subject-overview-kpi"><b>'+totalCourses+'</b><span>cours</span></div>'+
     '<div class="subject-overview-kpi"><b>'+totalCards+'</b><span>flashcards</span></div>'+
     '<div class="subject-overview-kpi"><b>'+pendingTotal+'</b><span>cours à démarrer</span></div>';
-  g.innerHTML=D.folders.map(function(f){
+  g.innerHTML=LF().map(function(f){
     var tc=(f.decks||[]).reduce(function(s,d){return s+(d.cards||[]).length;},0),late=0,due=0;
     (f.decks||[]).forEach(function(d){
       var _p=(deckPending(d)?[]:(d.plan||[])).filter(function(e){return !e.done&&e.date<=t;});
@@ -3534,6 +3551,11 @@ function renderSubjects(){
       '<div class="pcap"><b>'+esc(f.name)+'</b><span>'+(f.decks||[]).length+' cours · '+tc+' cartes'+(ex?' · '+ex:'')+'</span></div>'+
       '<div class="pacts"><button aria-label="Modifier" onclick="event.stopPropagation();editFolder(\''+f.id+'\')">'+ic('pencil')+'</button><button aria-label="Supprimer" onclick="event.stopPropagation();delFolder(\''+f.id+'\')">'+ic('trash')+'</button></div>','cv-poster')+'</div>';
   }).join('')+'<button class="poster add" onclick="openFolderModal()">'+ic('plus')+'<span>Nouvelle matière</span></button>';
+  var A=archivedFolders(),ab=document.getElementById('archBox');
+  if(ab)ab.innerHTML=A.length?'<details class="arch-sec"'+(SHOW_ARCH?' open':'')+' ontoggle="SHOW_ARCH=this.open"><summary><span>Archives</span><span class="hcount">'+A.length+'</span></summary><div class="subjects-grid arch-grid">'+A.map(function(f){
+    var tc=(f.decks||[]).reduce(function(s,d){return s+(d.cards||[]).length;},0);
+    return '<div class="poster arch" onclick="openFolder(\''+f.id+'\')">'+coverHtml(f,'folder','<span class="cvb">Archivée</span><div class="pcap"><b>'+esc(f.name)+'</b><span>'+(f.decks||[]).length+' cours · '+tc+' cartes</span></div>','cv-poster')+'</div>';
+  }).join('')+'</div></details>':'';
   renderSideSubjects();
 }
 
@@ -3550,13 +3572,15 @@ function renderFolder(){
   document.getElementById('folderSub').innerHTML=esc(sub)+(ex?' · '+ex:'');
   var hd=document.getElementById('folderHead');if(hd)hd.setAttribute('style',subjTint(f));
   var al=document.getElementById('folderAlert');
-  al.innerHTML=!f.examDate?'<div class="info-box" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><span>Aucune date d\'examen pour cette matière. Renseigne-la pour que l\'appli génère automatiquement le planning J de chaque cours.</span><button class="btn btn-primary btn-sm" onclick="editFolder(\''+f.id+'\')">Ajouter la date</button></div>':'';
+  if(f.archived){al.innerHTML='<div class="info-box arch-box"><span>Matière archivée'+(f.archivedAt?' ('+prettyD(f.archivedAt)+')':'')+'. Elle n\'apparaît plus dans les révisions ni les notifications. Tu peux toujours réviser ses cartes, ses QCM, ses fiches et ses annales.</span><button class="btn btn-ghost btn-sm" onclick="unarchiveFolder(\''+f.id+'\')">Désarchiver</button></div>';}
+  else if(f.examDate&&f.examDate<t){al.innerHTML='<div class="info-box arch-box"><span>Le partiel de cette matière est passé ('+prettyD(f.examDate)+'). Archive-la pour qu\'elle ne compte plus dans tes révisions et tes notifications.</span><button class="btn btn-primary btn-sm" onclick="archiveFolder(\''+f.id+'\')">Archiver</button></div>';}
+  else al.innerHTML=!f.examDate?'<div class="info-box" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><span>Aucune date d\'examen pour cette matière. Renseigne-la pour que l\'appli génère automatiquement le planning J de chaque cours.</span><button class="btn btn-primary btn-sm" onclick="editFolder(\''+f.id+'\')">Ajouter la date</button></div>':'';
   var hard=[];(f.decks||[]).forEach(function(d){(d.cards||[]).forEach(function(c){if(isHard(c))hard.push(c);});});
   if(hard.length)al.innerHTML+='<div class="folder-hard">'+ic('flame')+'<div class="fh-main"><div class="fh-title">Cartes difficiles dans cette matière</div><div class="fh-sub">'+hard.length+' carte'+(hard.length>1?'s':'')+' à reprendre avant le partiel</div></div><button class="btn btn-ghost btn-sm" onclick="openHardFromFolder()">Voir</button></div>';
   var g=document.getElementById('decksGrid');
   if(!(f.decks||[]).length){g.innerHTML='<div class="empty"><div class="empty-t">Aucun cours</div><div class="empty-s">Ajoute ton premier cours</div></div>';return;}
   g.innerHTML='<div class="trk-list">'+deckOrder(f).map(function(d){
-    var st=deckStatus(d);
+    var st=f.archived?archStatus(d):deckStatus(d);
     return '<div class="trk" onclick="openDeck(\''+d.id+'\')">'+coverHtml(f,d.id,'','cv-trk')+
       '<div class="trk-m"><div class="trk-t">'+esc(d.name)+'</div><div class="trk-s">'+(d.cards||[]).length+' cartes · '+st.doneCount+'/'+st.totalCount+' révisions · '+st.label+'</div>'+
       '<div class="gauge-bar"><div class="gauge-fill '+st.cls+'" style="width:'+st.pct+'%"></div></div></div>'+
@@ -3565,11 +3589,46 @@ function renderFolder(){
   }).join('')+'</div>';
   renderSideSubjects();
 }
+function archStatus(d){
+  var ss=(d.sessions||[]),last=ss.length?ss[ss.length-1].score:null,pl=d.archPlan||[];
+  return {cls:last===null?'g-ye':last>=70?'g-gr':last>=45?'g-ye':'g-or',pct:last===null?8:Math.max(8,Math.min(97,last)),bcls:'jb-ok',btxt:'Archivé',label:last===null?'Jamais révisé':'Dernier score '+last+' %',doneCount:pl.filter(function(e){return e.done;}).length,totalCount:pl.length};
+}
 function renderDeckHead(){
   var el=document.getElementById('deckHead');if(!el||!CUR.deck||!CUR.folder)return;
   el.innerHTML=coverHtml(CUR.folder,CUR.deck.id,'','cv-dh')+'<div><div class="dh-t">'+esc(CUR.deck.name)+'</div><div class="dh-s">'+esc(CUR.folder.name)+' · '+(CUR.deck.cards||[]).length+' cartes</div></div>';
 }
 
+
+// ════════════════════════════════════════
+// ARCHIVES — matières dont le partiel est passé
+// Une matière archivée sort de l'accueil, des révisions, du planning, des retards et des rappels.
+// Son planning est mis de côté dans archPlan (le serveur des rappels ne lit que « plan »).
+// ════════════════════════════════════════
+function LF(){return (D.folders||[]).filter(function(f){return !f.archived;});}
+function archivedFolders(){return (D.folders||[]).filter(function(f){return f.archived;});}
+function archiveFolder(id){
+  var f=D.folders.find(function(x){return x.id===id;});if(!f||f.archived)return;
+  if(!confirm('Archiver « '+f.name+' » ?\n\nElle sortira de l\'accueil, des révisions du jour, des retards, du planning et des notifications. Tout reste consultable dans Matières › Archives, et tu pourras la désarchiver.'))return;
+  (f.decks||[]).forEach(function(d){
+    if((d.plan||[]).length){d.archPlan=d.plan;d.plan=[];}
+  });
+  f.archived=true;f.archivedAt=today();
+  dbSave();closeModal('mFolder');toast('« '+f.name+' » archivée');
+  if(CUR.folder&&CUR.folder.id===id)renderFolder();
+  renderHome();
+}
+function unarchiveFolder(id){
+  var f=D.folders.find(function(x){return x.id===id;});if(!f||!f.archived)return;
+  if(!confirm('Désarchiver « '+f.name+' » ?\n\nSes cours reviennent dans les révisions avec leur planning d\'avant (les échéances passées apparaîtront en retard).'))return;
+  (f.decks||[]).forEach(function(d){
+    if(d.archPlan){if(!(d.plan||[]).length)d.plan=d.archPlan;delete d.archPlan;}
+  });
+  delete f.archived;delete f.archivedAt;
+  dbSave();closeModal('mFolder');toast('« '+f.name+' » de retour');
+  if(CUR.folder&&CUR.folder.id===id)renderFolder();
+  renderHome();
+}
+function toggleArchiveFromModal(){if(!EDIT_FOLDER_ID)return;var f=D.folders.find(function(x){return x.id===EDIT_FOLDER_ID;});if(!f)return;f.archived?unarchiveFolder(f.id):archiveFolder(f.id);}
 // ════════════════════════════════════════
 // ANNALES (cours et matière) — rangées hors du document principal
 //   users/{uid}/data/ann_<idCours>   = annales d'un cours
@@ -4589,7 +4648,7 @@ function renderCalKpi(){
   var todayN=due.filter(function(x){return x.entry.date===t;}).length;
   var weekN=due.filter(function(x){return x.entry.date>t&&diffDays(t,x.entry.date)<=7;}).length;
   var doneAll=0,sumSc=0,nSc=0,done7=0;
-  D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){
+  LF().forEach(function(f){(f.decks||[]).forEach(function(d){
     (d.plan||[]).forEach(function(e){
       if(e.done){doneAll++;if(e.score!==null&&e.score!==undefined){sumSc+=e.score;nSc++;}
         if(e.doneDate&&diffDays(e.doneDate,t)<=7)done7++;}
@@ -4620,7 +4679,7 @@ function renderCalMonth(){
   var dows=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
   var h='<div class="cal-grid">'+dows.map(function(d){return '<div class="cal-dow">'+d+'</div>';}).join('');
   var examDays={};
-  D.folders.forEach(function(f){if(f.examDate)examDays[f.examDate]=(examDays[f.examDate]||[]).concat([f]);});
+  LF().forEach(function(f){if(f.examDate)examDays[f.examDate]=(examDays[f.examDate]||[]).concat([f]);});
   for(var i=0;i<42;i++){
     var d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i);
     var ds=dStr(d);
@@ -4694,7 +4753,7 @@ function renderCalWeek(){
   days.forEach(function(x,i){h+='<div class="wk-hd'+(toDateStr(x)===t?' today':'')+'">'+names[i]+' <b>'+x.getDate()+'</b></div>';});
   h+='</div><div class="wk-allday"><div class="wk-gut" title="Révisions">🧠</div>';
   days.forEach(function(x){
-    var ds=toDateStr(x),evs=eventsOn(ds),exams=D.folders.filter(function(f){return f.examDate===ds;});
+    var ds=toDateStr(x),evs=eventsOn(ds),exams=LF().filter(function(f){return f.examDate===ds;});
     h+='<div class="wk-ad">';
     exams.forEach(function(f){h+='<div class="week-event exam" onclick="openDay(\''+ds+'\')">'+esc(f.name)+'</div>';});
     evs.forEach(function(e){h+='<div class="week-event" style="border-left:3px solid '+e.folder.color+(e.entry.done?';opacity:.5':'')+'" onclick="jumpTo(\''+e.folder.id+'\',\''+e.deck.id+'\')">'+esc(e.deck.name)+' · J'+e.entry.off+'</div>';});
@@ -4736,7 +4795,7 @@ function renderCalAgenda(){
   for(var i=0;i<21;i++){
     var ds=addDays(t,i);
     var evs=eventsOn(ds);
-    var exams=D.folders.filter(function(f){return f.examDate===ds;});
+    var exams=LF().filter(function(f){return f.examDate===ds;});
     var fac=facOn(ds);
     if(!evs.length&&!exams.length&&!fac.length)continue;
     h+='<div class="agenda-day"><div class="agenda-h"><div class="agenda-date">'+
@@ -4803,7 +4862,7 @@ function quickToggle(deckId,entryId){
 
 function openDay(ds){
   var evs=eventsOn(ds);
-  var exams=D.folders.filter(function(f){return f.examDate===ds;});
+  var exams=LF().filter(function(f){return f.examDate===ds;});
   document.getElementById('mDayTitle').textContent=prettyDLong(ds).charAt(0).toUpperCase()+prettyDLong(ds).slice(1);
   var t=today();
   var body='';
@@ -4839,7 +4898,7 @@ function closeModal(id){document.getElementById(id).classList.remove('open');}
 function openFolderModal(){
   EDIT_FOLDER_ID=null;
   document.getElementById('mFolderTitle').textContent='Nouvelle matière';
-  document.getElementById('mFolderSave').textContent='Créer';
+  document.getElementById('mFolderSave').textContent='Créer';document.getElementById('mFolderArch').style.display='none';
   document.getElementById('mFolderName').value='';
   document.getElementById('mFolderExam').value='';
   SEL_EMOJI='🧬';SEL_COLOR='#6c63ff';SEL_ART='auto';
@@ -4851,7 +4910,7 @@ function editFolder(id){
   if(!f)return;
   EDIT_FOLDER_ID=id;
   document.getElementById('mFolderTitle').textContent='Réglages de la matière';
-  document.getElementById('mFolderSave').textContent='Enregistrer';
+  document.getElementById('mFolderSave').textContent='Enregistrer';var _ab=document.getElementById('mFolderArch');_ab.style.display='';_ab.textContent=f.archived?'Désarchiver':'Archiver la matière';
   document.getElementById('mFolderName').value=f.name;
   document.getElementById('mFolderExam').value=f.examDate||'';
   SEL_EMOJI=f.emoji;SEL_COLOR=f.color;SEL_ART=f.artKey||'auto';

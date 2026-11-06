@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v16.2-2026-11-06-refonte">
+<meta name="app-build" content="v16.3-2026-11-06-annales">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -4434,6 +4434,35 @@ function autoTake(it){
     return suiviCall('imp',{g:it.g}).then(function(){return true;},function(){return true;});
   });
 }
+// Annales préparées par la tâche « annales » : rangées dans les cours (Évaluation) et dans la matière (Mode Examen)
+function annMerge(sets){
+  var by={},order=[];
+  sets.forEach(function(x){if(!by[x.y]){by[x.y]={y:x.y,qs:[]};order.push(x.y);}by[x.y].qs=by[x.y].qs.concat(x.qs);});
+  return order.sort(function(a,b){return b<a?-1:b>a?1:0;}).map(function(y){return by[y];});
+}
+function annApply(owner,scope,txt,h){
+  var sv=QIMP;QIMP={rej:0,noOk:0};var sets=annMerge(parseAnnSets(String(txt||'')));QIMP=sv;
+  if(!sets.length)return false;
+  saveAnn(scope,owner.id,{sets:sets,updatedAt:Date.now(),auto:true});
+  owner.nAnn=annCount({sets:sets});owner.annY=sets.map(function(x){return x.y;});owner.annH=h;
+  return true;
+}
+function annSync(ah){
+  if(!ah||!ah.s)return Promise.resolve(0);
+  var jobs=[];
+  Object.keys(ah.s).forEach(function(sn){
+    var kw=noAcc(String((ah.k||{})[sn]||'')).toLowerCase(),n0=noAcc(sn).toLowerCase();
+    var f=D.folders.find(function(x){var n=noAcc(x.name||'').toLowerCase();return !x.archived&&(n===n0||(kw&&n.indexOf(kw)>=0));});
+    if(f&&f.annH!==ah.s[sn])jobs.push(function(){return suiviCall('takea',{s:sn}).then(function(c){return annApply(f,'folder',c.txt,ah.s[sn]);});});
+  });
+  D.folders.forEach(function(f){if(f.archived)return;(f.decks||[]).forEach(function(d){
+    var h=d.sid&&ah.c&&ah.c[d.sid];
+    if(h&&d.annH!==h)jobs.push(function(){return suiviCall('takea',{c:d.sid}).then(function(c){return annApply(d,'deck',c.txt,h);});});
+  });});
+  var n=0;
+  return jobs.reduce(function(pr,j){return pr.then(j).then(function(ok){if(ok)n++;},function(e){console.warn('annales auto',e);});},Promise.resolve())
+    .then(function(){if(n){dbSave();}return n;});
+}
 function autoTakeF(it){
   // fiche refaite au nouveau format (+ fiche express) pour un cours déjà présent : on remplace seulement les fiches
   var deck=null;
@@ -4579,7 +4608,7 @@ function autoImport(manual){
   var n=0,ko=0,errs=[];
   if(manual)toast('Recherche de nouveaux cours…');
   flushDone();
-  var nq=0,nf=0;
+  var nq=0,nf=0,na=0;
   return suiviCall('sync',{d:mfDeckList()}).then(function(r){
     var upd=r.upd||[];
     return (r.inbox||[]).reduce(function(pr,it){
@@ -4594,13 +4623,15 @@ function autoImport(manual){
       return (r.updf||[]).reduce(function(pr,it){
         return pr.then(function(){return autoTakeF(it);}).then(function(ok){if(ok)nf++;},function(e){console.warn('maj fiche',it,e);});
       },Promise.resolve());
+    }).then(function(){
+      return annSync(r.annh).then(function(k){na=k;});
     });
   }).then(function(){
     if(n){
       toast(''+n+' nouveau'+(n>1?'x':'')+' cours ajouté'+(n>1?'s':'')+' (à démarrer)'+(ko?' · '+ko+' en échec':''));
       if(ko)setTimeout(function(){toast('Échec — '+errs[0]);},3800);
       try{renderHome();if(CUR.folder&&!CUR.deck)renderFolder();}catch(e){}
-    } else if(nq||nf){toast((nf?'Fiches refaites : '+nf+' cours':'')+(nf&&nq?' · ':'')+(nq?'QCM corrigés : '+nq+' cours':''));
+    } else if(nq||nf||na){toast([nf?'Fiches refaites : '+nf+' cours':'',nq?'QCM corrigés : '+nq+' cours':'',na?'Annales ajoutées : '+na:''].filter(Boolean).join(' · '));
     } else if(manual){toast(ko?'Échec ('+ko+') — '+errs[0]:'Aucun nouveau cours pour le moment');}
   }).catch(function(e){
     console.warn('import auto',e);

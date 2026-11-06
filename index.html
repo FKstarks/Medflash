@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v16.1-2026-11-06-fiche-large">
+<meta name="app-build" content="v16.2-2026-11-06-refonte">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -4434,6 +4434,20 @@ function autoTake(it){
     return suiviCall('imp',{g:it.g}).then(function(){return true;},function(){return true;});
   });
 }
+function autoTakeF(it){
+  // fiche refaite au nouveau format (+ fiche express) pour un cours déjà présent : on remplace seulement les fiches
+  var deck=null;
+  D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){if(d.sid===it.id)deck=d;});});
+  if(!deck)return suiviCall('impf',{g:it.g}).then(function(){return false;});
+  return suiviCall('takef',{g:it.g}).then(function(c){
+    if(!c||!c.fiche||String(c.fiche).length<1500)throw new Error('Fiche refaite incomplète pour « '+it.t+' »');
+    deck.hasFiche=true;saveFicheData(deck.id,c.fiche,c.rapport||'');
+    if(c.ficheExpress){deck.hasFicheX=true;saveFicheData('x_'+deck.id,c.ficheExpress,'');}
+    dbSave();
+    if(CUR.deck&&CUR.deck.id===deck.id){try{renderFiche();}catch(e){}}
+    return suiviCall('impf',{g:it.g}).then(function(){return true;},function(){return true;});
+  });
+}
 function autoTakeQ(it){
   var deck=null;
   D.folders.forEach(function(f){(f.decks||[]).forEach(function(d){if(d.sid===it.id)deck=d;});});
@@ -4565,7 +4579,7 @@ function autoImport(manual){
   var n=0,ko=0,errs=[];
   if(manual)toast('Recherche de nouveaux cours…');
   flushDone();
-  var nq=0;
+  var nq=0,nf=0;
   return suiviCall('sync',{d:mfDeckList()}).then(function(r){
     var upd=r.upd||[];
     return (r.inbox||[]).reduce(function(pr,it){
@@ -4575,13 +4589,18 @@ function autoImport(manual){
       return upd.reduce(function(pr,it){
         return pr.then(function(){return autoTakeQ(it);}).then(function(ok){if(ok)nq++;},function(e){console.warn('maj QCM',it,e);});
       },Promise.resolve());
+    }).then(function(){
+      // fiches refaites au nouveau format (refonte) : on remplace la fiche et on ajoute la fiche express
+      return (r.updf||[]).reduce(function(pr,it){
+        return pr.then(function(){return autoTakeF(it);}).then(function(ok){if(ok)nf++;},function(e){console.warn('maj fiche',it,e);});
+      },Promise.resolve());
     });
   }).then(function(){
     if(n){
       toast(''+n+' nouveau'+(n>1?'x':'')+' cours ajouté'+(n>1?'s':'')+' (à démarrer)'+(ko?' · '+ko+' en échec':''));
       if(ko)setTimeout(function(){toast('Échec — '+errs[0]);},3800);
       try{renderHome();if(CUR.folder&&!CUR.deck)renderFolder();}catch(e){}
-    } else if(nq){toast('QCM mis à jour avec les corrections : '+nq+' cours');
+    } else if(nq||nf){toast((nf?'Fiches refaites : '+nf+' cours':'')+(nf&&nq?' · ':'')+(nq?'QCM corrigés : '+nq+' cours':''));
     } else if(manual){toast(ko?'Échec ('+ko+') — '+errs[0]:'Aucun nouveau cours pour le moment');}
   }).catch(function(e){
     console.warn('import auto',e);

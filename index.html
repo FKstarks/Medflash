@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v16.5-2026-11-07-illus">
+<meta name="app-build" content="v16.6-2026-11-07-annales-cloud">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -4447,9 +4447,12 @@ function annMerge(sets){
 function annApply(owner,scope,txt,h){
   var sv=QIMP;QIMP={rej:0,noOk:0};var sets=annMerge(parseAnnSets(String(txt||'')));QIMP=sv;
   if(!sets.length)return false;
-  saveAnn(scope,owner.id,{sets:sets,updatedAt:Date.now(),auto:true});
-  owner.nAnn=annCount({sets:sets});owner.annY=sets.map(function(x){return x.y;});owner.annH=h;
-  return true;
+  var v={sets:sets,updatedAt:Date.now(),auto:true},k=annKey(scope,owner.id);
+  ANN_CACHE[k]=v;annLocalSet(k,v);
+  owner.nAnn=annCount({sets:sets});owner.annY=sets.map(function(x){return x.y;});
+  if(!window.annStore){owner.annH=h;return true;}
+  // l'empreinte n'est mémorisée qu'une fois enregistré dans le cloud : en cas d'échec, on réessaie à la prochaine ouverture
+  return window.annStore.set(k,v).then(function(){owner.annH=h;return true;},function(e){console.error('annales cloud',e);delete owner.annH;throw e;});
 }
 function annSync(ah){
   if(!ah||!ah.s)return Promise.resolve(0);
@@ -5920,7 +5923,8 @@ window.annStore = {
   },
   set: async function(k,o){
     if(!CURRENT_USER) return;
-    await setDoc(doc(db,'users',CURRENT_USER.uid,'data',k),fsEnc({sets:o.sets||[],updatedAt:Date.now()}));
+    // JSON : retire les champs « undefined », refusés par Firestore
+    await setDoc(doc(db,'users',CURRENT_USER.uid,'data',k),fsEnc(JSON.parse(JSON.stringify({sets:o.sets||[],updatedAt:Date.now()}))));
   },
   del: async function(k){
     if(!CURRENT_USER) return;

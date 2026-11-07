@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v16.3-2026-11-06-annales">
+<meta name="app-build" content="v16.5-2026-11-07-illus">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -836,10 +836,9 @@ nav .nav-r{margin-left:auto}
 .hero-h h3,.hcount,.hero-h .mini-link{white-space:nowrap}
 @media(max-width:640px){.hnav{display:none!important}}
 
-.cv-photo{background-size:cover!important;background-position:center!important}
-.cv-photo.cv-poster::before{background:linear-gradient(90deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,.15) 55%,transparent 80%)!important}
-.cv-photo .pcap b,.cv-photo .pcap span{color:#fff!important;opacity:1!important;text-shadow:0 1px 8px rgba(0,0,0,.35)}
-.mf-hero .hart i.hph{position:absolute;top:7%;left:50%;height:86%;aspect-ratio:1;transform:translateX(-50%);border-radius:22px;background:center/cover no-repeat;box-shadow:0 18px 40px -16px rgba(0,0,0,.35);filter:none}
+.cv-photo .cvp{position:absolute;inset:9%;z-index:-1;background:center/contain no-repeat;filter:drop-shadow(0 12px 20px rgba(0,0,0,.2))}
+body:not(.light) .cv-photo .cvp{filter:drop-shadow(0 16px 28px rgba(0,0,0,.55))}
+.mf-hero .hart i.hph{position:absolute;top:6%;left:50%;height:88%;aspect-ratio:1;transform:translateX(-50%);background:center/contain no-repeat}
 @media(max-width:640px){.mf-hero .hart i.hph{top:3%;height:76%}}
 
 .arch-box{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
@@ -1785,6 +1784,11 @@ function migrate(){
       if(!d.cards)d.cards=[];
       d.cards.forEach(function(c){if(!c.stats)c.stats={ok:0,ko:0};});
       if(!d.sessions)d.sessions=[];
+      // matière archivée : aucun planning (sinon les notifications reviennent) ; répare les plannings recréés par erreur
+      if(f.archived){
+        if(d.plan&&d.plan.length){if(!d.archPlan||!d.archPlan.length)d.archPlan=d.plan;d.plan=[];changed=true;}
+        return;
+      }
       if(!d.plan||!d.plan.length){
         var start=tsToStr(d.createdAt)||today();
         var sched=d.jSchedule&&d.jSchedule.length?d.jSchedule:J_SCHEDULE;
@@ -3415,7 +3419,7 @@ function coverHtml(f,seed,extra,cls){
   var k0=subjKey(f),S0=MF_SUBJ[k0],ph=null;
   if(seed==='folder'&&S0.cover&&!(f&&f.artKey&&f.artKey!==k0))ph=S0.cover;
   else if(seed!=='folder'){var dd=findDeckIn(f,seed);if(dd)ph=courseArt(f,dd);}
-  if(ph&&MF_ART[ph])return '<div class="cv cv-photo '+(cls||'')+'" style="'+subjTint(f)+';background-image:url('+MF_ART[ph][0]+')">'+(extra||'')+'</div>';
+  if(ph&&MF_ART[ph])return '<div class="cv cv-photo '+(cls||'')+'" style="'+subjTint(f)+'"><i class="cvp" style="background-image:url('+MF_ART[ph][0]+')"></i>'+(extra||'')+'</div>';
   var k=k0,S=S0,imgs=S.imgs,h=hashN(seed),lay=seed==='folder'?MF_LAY[0]:MF_LAY[h%MF_LAY.length];
   var t=S.t,st='--c1:'+t[0]+';--c2:'+t[1]+';--d1:'+t[2]+';--d2:'+t[3]+';--ct:'+t[4]+';--cd:'+t[5];
   var html=lay.map(function(b,i){

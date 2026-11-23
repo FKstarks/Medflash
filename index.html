@@ -11,7 +11,7 @@
 
 <!-- ===== PWA ===== -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="app-build" content="v16.6-2026-11-07-annales-cloud">
+<meta name="app-build" content="v16.7-2026-11-23-anatomie">
 <meta name="application-name" content="MedFlash">
 <meta name="apple-mobile-web-app-title" content="MedFlash">
 <meta name="description" content="Revisions espacees et flashcards pour les etudes de medecine.">
@@ -848,6 +848,120 @@ body:not(.light) .cv-photo .cvp{filter:drop-shadow(0 16px 28px rgba(0,0,0,.55))}
 .arch-sec summary::after{content:"›";color:var(--tx3);font-weight:400;transition:transform .2s}
 .arch-sec[open] summary::after{transform:rotate(90deg)}
 .poster.arch .cv{filter:saturate(.55) brightness(.97)}
+</style>
+<style id="anCss">
+/* ═══ Anatomie (schémas en calques) ═══ */
+/* ═══ MedFlash · Anatomie ═══ */
+.an-top{margin-bottom:4px}
+.an-pane{display:none}
+.an-s>.an-pane{display:block}
+.an-s>:not(.an-top):not(.an-pane){display:none!important}
+.an-picks{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 10px;margin-bottom:6px;scrollbar-width:none}
+.an-picks::-webkit-scrollbar{display:none}
+.an-pick{flex:none;display:flex;align-items:center;gap:10px;background:var(--s1);border:1.5px solid var(--bd);border-radius:16px;padding:6px 14px 6px 6px;cursor:pointer;text-align:left;color:var(--tx);font-family:var(--font);min-height:58px;transition:border-color .15s}
+.an-pick img{width:46px;height:46px;object-fit:contain;background:#fff;border-radius:11px;border:1px solid var(--bd)}
+.an-pick b{display:block;font-size:13.5px;font-weight:700;line-height:1.25;max-width:210px}
+.an-pick small{color:var(--tx2);font-size:12px}
+.an-pick.on{border-color:var(--ac);box-shadow:0 0 0 3px rgba(108,99,255,.16)}
+.an-grid{display:flex;flex-direction:column;gap:12px}
+.an-sheet{background:var(--s1);border:1px solid var(--bd);border-radius:20px;padding:10px;box-shadow:var(--sh2);min-width:0}
+.an-cap{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding:4px 6px 8px}
+.an-cap b{font:700 15px/1.2 var(--font);color:var(--tx)}
+.an-cap span{font-size:12.5px;color:var(--tx2)}
+.an-host{position:relative;overflow-x:auto;border-radius:14px;background:#fff;-webkit-overflow-scrolling:touch}
+.an-svg{display:block;width:100%;min-width:760px;height:auto;font-family:var(--font);user-select:none;-webkit-user-select:none}
+.an-tap .an-hit{cursor:crosshair}
+.an-lb.is-q{cursor:pointer}
+.an-lb.is-q:hover rect{fill:#f4f2ff}
+.an-side{order:-1;display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:14px 16px}
+.an-side>.an-h{margin:0;flex:none}
+.an-side>.an-tip{flex:1 1 300px}
+.an-side>.an-score{margin:0}
+.an-side>.an-actions{margin:0}
+.an-side>.an-row{min-height:34px}
+.an-side>.an-ask{margin:0;flex:1 1 260px}
+.an-side>.an-fb{flex:1 1 240px}
+.an-side>.an-lrow{flex:1 1 100%}
+#anCorrBox{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;flex:1 1 100%}
+#anCorrBox .an-h{margin:0}
+#anCorrBox .an-op{padding:0;flex:1 1 200px;max-width:320px}
+#anCorrBox .an-grade{flex:1 1 300px;max-width:420px}
+.an-ctrl{padding:12px 14px;margin-bottom:12px;display:flex;flex-direction:column;gap:8px}
+.an-crow{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.an-cl{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--tx3);min-width:72px}
+.an-lrow{display:inline-flex;flex-wrap:wrap;gap:6px}
+.an-lc{display:inline-flex;align-items:center;gap:7px}
+.an-lc .an-dot{width:11px;height:11px;border-radius:4px}
+.an-lc:not(.on){opacity:.55}
+.an-lc:not(.on) .an-dot{background:transparent!important;box-shadow:inset 0 0 0 1.5px var(--tx3)}
+.an-opbox{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:4px 18px;padding-top:4px;border-top:1px solid var(--bd)}
+.an-opbox .an-op{padding:6px 0}
+.an-opbox .an-op b{font-weight:600;color:var(--tx);min-width:84px}
+.an-key{margin:10px 2px 0}
+.an-h{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--tx3);margin:16px 0 8px}
+.an-side>.an-h:first-child{margin-top:0}
+.an-chips{display:flex;flex-wrap:wrap;gap:6px}
+.an-row{display:flex;align-items:center;gap:10px;min-height:42px;cursor:pointer;padding:2px 2px}
+.an-row input{position:absolute;opacity:0;pointer-events:none}
+.an-nm{flex:1;font-size:14px;color:var(--tx)}
+.an-dot{width:14px;height:14px;border-radius:5px;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.an-sw{width:40px;height:24px;border-radius:99px;background:var(--s2);border:1px solid var(--bd);position:relative;flex:none;transition:background .15s}
+.an-sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s}
+.an-row input:checked+.an-sw{background:var(--ac);border-color:var(--ac)}
+.an-row input:checked+.an-sw::after{transform:translateX(16px)}
+.an-row input:focus-visible+.an-sw{outline:2px solid var(--ac);outline-offset:2px}
+.an-layer{border-bottom:1px solid var(--bd);padding-bottom:4px;margin-bottom:2px}
+.an-layer:last-child{border-bottom:0}
+.an-op{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--tx2)}
+.an-op input{flex:1;accent-color:var(--ac)}
+.an-op span{min-width:40px;text-align:right}
+.an-op.off{opacity:.35;pointer-events:none}
+.an-key{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;font-weight:600;margin-top:12px;color:var(--tx2)}
+.an-tip{font-size:13.5px;color:var(--tx2);line-height:1.55}
+.an-score{display:flex;align-items:baseline;gap:6px;margin:14px 0 4px;font-size:14px;color:var(--tx2)}
+.an-score b{font:800 26px/1 var(--font);color:var(--tx)}
+.an-score span{margin-left:4px}
+.an-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.an-bar{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.an-bar b{font:700 15px var(--font);flex:1;min-width:180px}
+.an-ask{background:var(--s2);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.an-ask small{display:block;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--tx3);margin-bottom:2px}
+.an-ask span{font:800 19px/1.25 var(--font)}
+.an-fb{font-size:14px;color:var(--tx2);min-height:22px}
+.an-fb.ok{color:var(--gr);font-weight:700}.an-fb.ko{color:var(--rd);font-weight:700}
+.an-modes{max-width:820px}
+.an-main{grid-column:1/-1;border-color:var(--ac)!important}
+.an-choose{max-width:760px}
+.an-gp{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.an-g{background:var(--s2);border:1.5px solid var(--bd);border-radius:14px;padding:12px 14px;text-align:left;cursor:pointer;color:var(--tx);font-family:var(--font)}
+.an-g:hover{border-color:var(--ac)}
+.an-g b{display:block;font-size:15px}
+.an-g small{display:block;font-size:12.5px;color:var(--tx2);margin-top:2px}
+.an-tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:0 4px 10px}
+.an-col{width:30px;height:30px;border-radius:50%;border:3px solid var(--s1);background:var(--c);box-shadow:0 0 0 1.5px var(--bd);cursor:pointer}
+.an-col.on{box-shadow:0 0 0 2.5px var(--ac)}
+.an-sep{width:1px;height:24px;background:var(--bd);margin:0 4px}
+.an-tools .tog{padding:6px 11px}
+.an-canvas-wrap{touch-action:none}
+.an-canvas-wrap canvas{position:absolute;left:0;top:0;touch-action:none;cursor:crosshair}
+.an-grade{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.an-grade .btn{border:1.5px solid var(--g);background:transparent;color:var(--g);font-weight:700;padding:10px 6px}
+.an-grade .btn.on,.an-grade .btn:hover{background:var(--g);color:#fff}
+.an-res{text-align:left;margin:0 auto 18px;max-width:420px}
+.an-res div{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--bd);font-size:14px}
+.an-res div:last-child{border-bottom:0}
+.v-good{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3)}
+
+.an-opbox[hidden]{display:none}
+
+.an-fullb{margin-left:auto;padding:5px 12px}
+.an-sheet.an-full{position:fixed;inset:0;z-index:960;border-radius:0;overflow:auto;padding:12px max(12px,env(safe-area-inset-right)) 24px max(12px,env(safe-area-inset-left))}
+.an-sheet.an-full .an-cap{position:sticky;top:0;z-index:2;background:var(--s1);padding-top:max(6px,env(safe-area-inset-top))}
+.an-sheet.an-full .an-tools{position:sticky;top:44px;z-index:2;background:var(--s1)}
+.an-sheet.an-full .an-svg{min-width:0}
+body.an-noscroll{overflow:hidden}
+@media(max-width:1100px){.an-svg{min-width:640px}}
+
 </style>
 </head>
 <body class="logged-out">
@@ -4405,7 +4519,15 @@ function parseCardsText(raw){
 function autoTake(it){
   var already=D.folders.some(function(f){return (f.decks||[]).some(function(d){return d.sid===it.id;});});
   if(already)return suiviCall('imp',{g:it.g}).then(function(){return false;});
+  // Anatomie : les schémas (calques + légendes) sont publiés sur GitHub à côté de l'appli, dans fig/anat/<dossier du cours>/
+  var isAnat=/anatom/.test(noAcc(String(it.k||'')+' '+String(it.sn||'')).toLowerCase());
   return suiviCall('take',{g:it.g}).then(function(c){
+    if(!isAnat&&!c.anat)return [c,null];
+    if(c.anat){try{return [c,JSON.parse(c.anat)];}catch(e){}}
+    // dossier GitHub nommé d'après l'identifiant du cours dans le Suivi (ex. 7-2), sinon d'après le dossier Drive
+    return anFetch(it.id).then(function(j){j._k=it.id;return j;},function(){return anFetch(it.g).then(function(j){j._k=it.g;return j;});}).then(function(j){return [c,j];});
+  }).then(function(r){
+    var c=r[0],aj=r[1];
     var cards=parseCardsText(c.cards);
     if(!cards.length)throw new Error('Aucune carte lisible pour « '+it.t+' »');
     var saveQ=QIMP;QIMP={rej:0,noOk:0};
@@ -4430,6 +4552,7 @@ function autoTake(it){
       deck.plan=deck.jSchedule.map(function(o){return mkEntry(o,addDays(start,o),'normal');});
       deck.autoPlan=false;
     }
+    if(aj&&aj.schemas){deck.anat={g:aj._k||it.g,n:aj.schemas.length};delete aj._k;saveFicheData('anat_'+deck.id,JSON.stringify(aj),'');}
     if(c.fiche){deck.hasFiche=true;saveFicheData(deck.id,c.fiche,c.rapport||'');}
     if(c.ficheExpress){deck.hasFicheX=true;saveFicheData('x_'+deck.id,c.ficheExpress,'');}
     if(c.annales){var sv=QIMP;QIMP={rej:0,noOk:0};var as=parseAnnSets(String(c.annales));QIMP=sv;if(as.length){saveAnn('deck',deck.id,{sets:as,updatedAt:Date.now()});deck.nAnn=annCount({sets:as});deck.annY=as.map(function(x){return x.y;});}}
@@ -6195,6 +6318,529 @@ document.getElementById('authEmail').addEventListener('keydown', function(e){
   var orig=window.showScreen;
   if(typeof orig==='function')window.showScreen=function(){nav.classList.remove('mn-hide');return orig.apply(this,arguments);};
 })();
+</script>
+<script>
+// ═══ MedFlash · Anatomie : rendu d'un schéma en calques avec ses légendes ═══
+// Un schéma = des calques PNG/WebP superposés (même toile) + des légendes reliées par une flèche.
+// Couleurs des légendes : artères en rouge, veines en bleu, nerfs en jaune orangé,
+// ligaments/tendons/aponévroses en vert ; muscles, os et repères en noir.
+var AN_COL={s:'#8e3fb0',m:'#1d1d1f',o:'#1d1d1f',r:'#1d1d1f',g:'#1d1d1f',a:'#d62828',v:'#1f63d6',n:'#c98a00',l:'#23883a'};
+var AN_TYPE_NM={s:'Gaine synoviale',m:'Muscle',o:'Os',r:'Repère',g:'Graisse',a:'Artère',v:'Veine',n:'Nerf',l:'Ligament / aponévrose'};
+var AN_NS='http://www.w3.org/2000/svg';
+function anEl(tag,at,par){var e=document.createElementNS(AN_NS,tag);for(var k in at)e.setAttribute(k,at[k]);if(par)par.appendChild(e);return e;}
+
+/* opts :
+   vis   {idCalque:bool}       calques affichés
+   op    {idCalque:0..1}       opacité
+   bones bool                  légendes des os affichées
+   labels 'show' | 'quiz' | 'none' | 'only:<calque,calque>'
+   revealed {index:true}       légendes déjà révélées (quiz)
+   hit   bool                  zones cliquables sur les structures (Localiser)
+   onLabel(i) / onHit(x,y)     */
+function anRender(host,S,opts){
+  opts=opts||{};
+  var vis=opts.vis||{},op=opts.op||{};
+  var vb=S.vb,fs=S.fs||32;
+  host.innerHTML='';
+  var svg=anEl('svg',{viewBox:vb.join(' '),'class':'an-svg',role:'img','aria-label':S.title},host);
+  var defs=anEl('defs',{},svg);
+  var mk=anEl('marker',{id:'anArr',viewBox:'0 0 10 10',refX:'9',refY:'5',markerWidth:'7',markerHeight:'7',orient:'auto-start-reverse',markerUnits:'userSpaceOnUse'},defs);
+  mk.setAttribute('markerWidth',String(fs*.55));mk.setAttribute('markerHeight',String(fs*.55));
+  anEl('path',{d:'M0,1 L10,5 L0,9 z',fill:'#1d1d1f'},mk);
+  anEl('rect',{x:vb[0],y:vb[1],width:vb[2],height:vb[3],fill:'#fff'},svg);
+  var gL=anEl('g',{'class':'an-layers'},svg);
+  var order=S.layers.slice();
+  if(S.fondTop){var f=order.shift();order.push(f);}
+  order.forEach(function(L){
+    var on=vis[L.id]!==false;
+    var im=anEl('image',{href:L.src,x:0,y:0,width:S.w,height:S.h,'data-l':L.id},gL);
+    im.style.opacity=on?(op[L.id]!=null?op[L.id]:1):0;
+    im.style.transition='opacity .18s';
+  });
+  if(S.orient){
+    var g=anEl('g',{'class':'an-orient',stroke:'#1d1d1f','stroke-width':'5',fill:'none'},svg);
+    var ox=vb[0]+60,oy=vb[1]+vb[3]-70;
+    anEl('path',{d:'M'+ox+' '+oy+' V'+(oy-90)+' M'+(ox-12)+' '+(oy-74)+' L'+ox+' '+(oy-92)+' L'+(ox+12)+' '+(oy-74)+' M'+ox+' '+oy+' H'+(ox+90)+' M'+(ox+74)+' '+(oy-12)+' L'+(ox+92)+' '+oy+' L'+(ox+74)+' '+(oy+12)},g);
+    var t1=anEl('text',{x:ox-14,y:oy-104,'font-size':fs*.85,fill:'#1d1d1f',stroke:'none'},g);t1.textContent=S.orient[0];
+    var t2=anEl('text',{x:ox+102,y:oy+10,'font-size':fs*.85,fill:'#1d1d1f',stroke:'none'},g);t2.textContent=S.orient[1];
+  }
+  if(opts.hit){
+    var hr=anEl('rect',{x:0,y:0,width:S.w,height:S.h,fill:'transparent','class':'an-hit'},svg);
+    hr.addEventListener('click',function(e){
+      var p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;
+      var q=p.matrixTransform(svg.getScreenCTM().inverse());
+      if(opts.onHit)opts.onHit(q.x,q.y,svg);
+    });
+  }
+  var mode=opts.labels||'show';
+  if(mode==='none')return svg;
+  var only=null;if(mode.indexOf('only:')===0){only=mode.slice(5).split(',');mode='show';}
+  var gT=anEl('g',{'class':'an-labels'},svg);
+  S.labels.forEach(function(lb,i){
+    if(vis[lb.dep]===false)return;
+    if(lb.ty==='o'&&opts.bones===false)return;
+    if(only&&only.indexOf(lb.dep)<0)return;
+    if(opts.pick&&opts.pick.indexOf(i)<0)return;
+    var g=anEl('g',{'class':'an-lb','data-i':i},gT);
+    var L=lb.side==='L',x=lb.x,y=lb.y;
+    var x0=L?x+6:x-6;
+    lb.to.forEach(function(p){
+      anEl('line',{x1:x0,y1:y,x2:p[0],y2:p[1],stroke:'#1d1d1f','stroke-width':fs*.09,'marker-end':'url(#anArr)'},g);
+    });
+    var col=AN_COL[lb.ty]||'#1d1d1f';
+    var quiz=mode==='quiz'&&!(opts.revealed&&opts.revealed[i]);
+    if(quiz){
+      var w=fs*3.4,h=fs*1.25;
+      var rx=L?x-w-4:x+4;
+      var r=anEl('rect',{x:rx,y:y-h/2,width:w,height:h,rx:h/2,fill:'#f3f2fa',stroke:'#6c63ff','stroke-width':fs*.09,'class':'an-q'},g);
+      var q=anEl('text',{x:rx+w/2,y:y,'text-anchor':'middle','dominant-baseline':'central','font-size':fs,'font-weight':'800',fill:'#5b52f0'},g);q.textContent='?';
+      g.classList.add('is-q');
+      g.addEventListener('click',function(){if(opts.onLabel)opts.onLabel(i);});
+    } else {
+      var t=anEl('text',{x:L?x-6:x+6,y:y,'text-anchor':L?'end':'start','dominant-baseline':'central','font-size':fs,fill:col,'font-weight':lb.ty==='m'||lb.ty==='o'||lb.ty==='r'||lb.ty==='g'?'500':'600'},g);
+      t.textContent=lb.t;
+      if(mode==='quiz'){g.classList.add('is-rev');}
+      if(lb.note){
+        lb.note.forEach(function(nl,k){
+          var n=anEl('text',{x:L?x-6:x+6,y:y+fs*(1.05+.9*k),'text-anchor':L?'end':'start','dominant-baseline':'central','font-size':fs*.75,fill:'#6b6b73','font-style':'italic'},g);n.textContent=nl;
+        });
+      }
+    }
+  });
+  return svg;
+}
+// Version statique (chaîne SVG) : utilisée pour générer la fiche, sans script.
+if(typeof module!=='undefined')module.exports={AN_COL:AN_COL};
+
+</script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+// MedFlash · ANATOMIE — module des cours à schémas
+// Un cours d'anatomie (deck.anat) = plusieurs schémas en calques + des flashcards + une fiche.
+// Révision / Apprentissage / Évaluation ont un sélecteur « Schémas | Flashcards » :
+// la partie Flashcards reste le moteur habituel de MedFlash, la partie Schémas est ici.
+// ═══════════════════════════════════════════════════════════════
+var AN={data:{},si:0,vis:{},op:{},bones:true,lbl:true,mode:{study:'s',learn:'s',eval:'s'},run:null,pix:{}};
+var AN_SW={gaine:'#8e3fb0',fond:'#2b2b30',muscle:'#b4540e',lig:'#23883a',artere:'#d62828',veine:'#1f63d6',nerf:'#e0ac00',graisse:'#f2d21b'};
+var AN_GROUPS=[ // pour « Je dessine »
+  {k:'all',nm:'Tout le schéma',d:'Sur le fond seul, tu replaces tout'},
+  {k:'muscle',nm:'Muscles',ty:['muscle']},
+  {k:'vx',nm:'Vaisseaux',ty:['artere','veine']},
+  {k:'nerf',nm:'Nerfs',ty:['nerf']},
+  {k:'lig',nm:'Ligaments',ty:['lig']},
+  {k:'graisse',nm:'Graisse',ty:['graisse']},
+  {k:'lbl',nm:'Légendes seulement',d:'Tout est dessiné, tu nommes'}
+];
+var AN_GRADE=[{k:0,nm:'Raté',c:'var(--rd)'},{k:60,nm:'Presque',c:'var(--ye)'},{k:100,nm:'Parfait',c:'var(--gr)'}];
+
+function anDeck(){return CUR&&CUR.deck&&CUR.deck.anat?CUR.deck:null;}
+function anList(){var d=anDeck();return d&&AN.data[d.id]?AN.data[d.id].schemas:[];}
+// Données des schémas : copie dans le cloud (comme les fiches), sinon le fichier anat.json publié avec les images sur GitHub
+function anFetch(g){return fetch('fig/anat/'+g+'/anat.json',{cache:'no-cache'}).then(function(r){if(!r.ok)throw new Error('Schémas pas encore en ligne ('+r.status+')');return r.json();});}
+function anLoad(d){
+  if(AN.data[d.id])return Promise.resolve(AN.data[d.id]);
+  return loadFiche('anat_'+d.id).then(function(f){
+    if(f&&f.html){try{return JSON.parse(f.html);}catch(e){}}
+    return anFetch(d.anat.g).then(function(j){saveFicheData('anat_'+d.id,JSON.stringify(j),'');return j;});
+  }).then(function(j){AN.data[d.id]=j;return j;});
+}
+function anS(){return anList()[AN.si]||anList()[0];}
+function anLayersOf(S,tys){return S.layers.filter(function(L){return tys.indexOf(L.ty)>=0;}).map(function(L){return L.id;});}
+function anGroupsOf(S){return AN_GROUPS.filter(function(g){return !g.ty||anLayersOf(S,g.ty).length;});}
+function anResetView(){var S=anS();AN.vis={};AN.op={};if(S)S.layers.forEach(function(L){AN.vis[L.id]=true;AN.op[L.id]=1;});}
+
+// ── accroche sur les onglets ──
+(function(){
+  var orig=window.switchTab;
+  window.switchTab=function(tab){orig(tab);anAfterTab(tab);};
+  var od=window.renderDeckHead;
+  window.renderDeckHead=function(){od();var d=anDeck();if(!d)return;var s=document.querySelector('#deckHead .dh-s');var n=AN.data[d.id]?AN.data[d.id].schemas.length:(d.anat.n||0);if(s)s.textContent=CUR.folder.name+' · '+n+' schéma'+(n>1?'s':'')+' · '+(d.cards||[]).length+' cartes';};
+})();
+var AN_TABS={study:'tabStudy',learn:'tabLearn',eval:'tabEval'};
+function anAfterTab(tab){
+  Object.keys(AN_TABS).forEach(function(t){
+    var c=document.getElementById(AN_TABS[t]);if(!c)return;
+    var top=c.querySelector(':scope>.an-top'),pane=c.querySelector(':scope>.an-pane');
+    if(!anDeck()){c.classList.remove('an-s');if(top)top.remove();if(pane)pane.remove();return;}
+    if(!top){top=document.createElement('div');top.className='an-top';c.insertBefore(top,c.firstChild);}
+    if(!pane){pane=document.createElement('div');pane.className='an-pane';top.after(pane);}
+  });
+  if(!anDeck()||!AN_TABS[tab])return;
+  // un seul onglet Anatomie vivant à la fois (évite les doublons d'identifiants entre onglets)
+  Object.keys(AN_TABS).forEach(function(t){if(t!==tab){var pn=anPane(t);if(pn)pn.innerHTML='';}});
+  anRun(null);
+  var d=anDeck();
+  if(!AN.data[d.id]){
+    var c=document.getElementById(AN_TABS[tab]);c.classList.add('an-s');
+    c.querySelector(':scope>.an-top').innerHTML='';
+    anPane(tab).innerHTML='<div class="empty-soft">Chargement des schémas…</div>';
+    anLoad(d).then(function(){if(CUR.deck===d){renderDeckHead();anTabRender(tab);}},function(e){
+      if(CUR.deck!==d)return;anPane(tab).innerHTML='<div class="empty-soft">Schémas indisponibles pour le moment (hors connexion ?). Les flashcards restent disponibles.<div style="margin-top:12px"><button class="btn btn-ghost btn-sm" onclick="anMode(\''+tab+'\',\'c\')">Ouvrir les flashcards</button></div></div>';});
+    return;
+  }
+  anTabRender(tab);
+}
+function anTabRender(tab){
+  var c=document.getElementById(AN_TABS[tab]),top=c.querySelector(':scope>.an-top');
+  var b=tab==='eval'?'Questions':'Flashcards';
+  top.innerHTML=kindSeg(AN.mode[tab],['s','Schémas'],['c',b],'anMode_'+tab);
+  c.classList.toggle('an-s',AN.mode[tab]==='s');
+  if(AN.mode[tab]!=='s')return;
+  if(tab==='study')anStudy();
+  if(tab==='learn')anLearnHome();
+  if(tab==='eval')anEvalHome();
+}
+function anMode(tab,m){AN.mode[tab]=m;anRun(null);
+  if(m==='c'){ // on relance l'écran habituel (il a pu être masqué en plein exercice)
+    if(tab==='study')studyEntry();if(tab==='learn')learnHome();if(tab==='eval')evalEntry();
+  }
+  anTabRender(tab);}
+function anMode_study(m){anMode('study',m);}function anMode_learn(m){anMode('learn',m);}function anMode_eval(m){anMode('eval',m);}
+function anPane(tab){return document.querySelector('#'+AN_TABS[tab]+'>.an-pane');}
+function anRun(r){AN.run=r;}
+
+// ── éléments communs ──
+function anPicker(fn){
+  return '<div class="an-picks">'+anList().map(function(S,i){
+    return '<button class="an-pick'+(i===AN.si?' on':'')+'" onclick="'+fn+'('+i+')"><img src="'+S.thumb+'" alt=""><span><b>'+esc(S.title)+'</b><small>'+S.labels.length+' légendes</small></span></button>';
+  }).join('')+'</div>';
+}
+var AN_FULLBTN='<button class="btn btn-ghost btn-sm an-fullb" onclick="anFull(this)">Agrandir</button>';
+function anSheet(id,extra){return '<div class="an-sheet'+(extra?' '+extra:'')+'"><div class="an-cap"><b>'+esc(anS().title)+'</b><span>'+esc(anS().sub||'')+'</span>'+AN_FULLBTN+'</div><div class="an-host" id="'+id+'"></div></div>';}
+function anFull(b){var s=b.closest('.an-sheet');var on=!s.classList.contains('an-full');s.classList.toggle('an-full',on);b.textContent=on?'Fermer':'Agrandir';document.body.classList.toggle('an-noscroll',on);}
+
+// ═══ RÉVISION : le schéma en calques ═══
+function anStudy(){
+  var S=anS();if(!AN.vis||!Object.keys(AN.vis).length||!S.layers.every(function(L){return L.id in AN.vis;}))anResetView();
+  var p=anPane('study');
+  var pres=[['all','Tout'],['fond','Fond seul'],['mus','Muscles']];
+  if(anLayersOf(S,['artere','veine']).length)pres.push(['vx','Vaisseaux']);
+  if(anLayersOf(S,['nerf']).length)pres.push(['nerf','Nerfs']);
+  p.innerHTML=anPicker('anPickStudy')+
+    '<div class="panel-card an-ctrl">'+
+      '<div class="an-crow"><span class="an-cl">Afficher</span>'+pres.map(function(x){return '<button class="tog" onclick="anPreset(\''+x[0]+'\')">'+x[1]+'</button>';}).join('')+
+        '<span class="an-sep"></span><button class="tog'+(AN.lbl?' on':'')+'" onclick="anToggleLbl();this.classList.toggle(\'on\',AN.lbl)">Légendes</button>'+
+        '<button class="tog'+(AN.bones?' on':'')+'" onclick="anToggleBones();this.classList.toggle(\'on\',AN.bones)">Légendes des os</button></div>'+
+      '<div class="an-crow"><span class="an-cl">Calques</span><span id="anLayerRows" class="an-lrow"></span>'+
+        '<button class="tog an-opt" onclick="var b=document.getElementById(\'anOpBox\');b.hidden=!b.hidden;this.classList.toggle(\'on\',!b.hidden)">Opacité</button></div>'+
+      '<div id="anOpBox" class="an-opbox" hidden></div>'+
+    '</div>'+anSheet('anStudyHost')+
+    '<div class="an-key"><span style="color:#d62828">artère</span><span style="color:#1f63d6">veine</span><span style="color:#c98a00">nerf</span><span style="color:#23883a">ligament, aponévrose</span><span>muscle, os, repère</span></div>';
+  anLayerRows();anStudyDraw();
+}
+function anSwitch(id,nm,on,fn){return '<label class="an-row"><span class="an-nm">'+nm+'</span><input type="checkbox" id="'+id+'" '+(on?'checked':'')+' onchange="'+fn+'"><i class="an-sw"></i></label>';}
+function anLayerRows(){
+  var S=anS(),el=document.getElementById('anLayerRows'),ob=document.getElementById('anOpBox');if(!el)return;
+  el.innerHTML=S.layers.map(function(L){var on=AN.vis[L.id]!==false;
+    return '<button class="tog an-lc'+(on?' on':'')+'" onclick="anVis(\''+L.id+'\','+(!on)+')"><i class="an-dot" style="background:'+AN_SW[L.ty]+'"></i>'+esc(L.nm.replace(/ \(.*\)/,''))+'</button>';}).join('');
+  if(ob)ob.innerHTML=S.layers.map(function(L){var on=AN.vis[L.id]!==false,op=Math.round((AN.op[L.id]==null?1:AN.op[L.id])*100);
+    return '<div class="an-op'+(on?'':' off')+'"><i class="an-dot" style="background:'+AN_SW[L.ty]+'"></i><b>'+esc(L.nm.replace(/ \(.*\)/,''))+'</b><input type="range" min="10" max="100" value="'+op+'" oninput="anOp(\''+L.id+'\',this)" aria-label="Opacité '+esc(L.nm)+'"><span>'+op+' %</span></div>';}).join('');
+}
+function anStudyDraw(){var h=document.getElementById('anStudyHost');if(h)anRender(h,anS(),{vis:AN.vis,op:AN.op,bones:AN.bones,labels:AN.lbl?'show':'none'});}
+function anPickStudy(i){AN.si=i;anResetView();anStudy();}
+function anVis(id,on){AN.vis[id]=on;anLayerRows();anStudyDraw();}
+function anOp(id,inp){var v=+inp.value;AN.op[id]=v/100;var h=document.querySelector('#anStudyHost image[data-l="'+id+'"]');if(h&&AN.vis[id]!==false)h.style.opacity=v/100;
+  if(inp.nextElementSibling)inp.nextElementSibling.textContent=v+' %';}
+function anToggleLbl(){AN.lbl=!AN.lbl;anStudyDraw();}
+function anToggleBones(){AN.bones=!AN.bones;anStudyDraw();}
+function anPreset(k){
+  var S=anS();anResetView();
+  var keep={all:null,fond:['fond'],mus:['fond','muscle','lig'],vx:['fond','muscle','artere','veine'],nerf:['fond','muscle','nerf']}[k];
+  if(keep)S.layers.forEach(function(L){AN.vis[L.id]=keep.indexOf(L.ty)>=0;});
+  if(k==='vx'||k==='nerf')S.layers.forEach(function(L){if(L.ty==='muscle')AN.op[L.id]=.35;});
+  anLayerRows();anStudyDraw();
+}
+
+// ═══ APPRENTISSAGE ═══
+function anLearnHome(){
+  var p=anPane('learn');
+  p.innerHTML='<div style="text-align:center;margin-bottom:22px">'+
+      '<div style="font-family:var(--font);font-size:21px;font-weight:700;margin-bottom:6px">Apprendre les schémas</div>'+
+      '<div style="color:var(--tx2);font-size:14px">Le parcours valide ton J0, comme l\'apprentissage des flashcards. Les exercices seuls servent à t\'entraîner.</div></div>'+
+    '<div class="mode-grid an-modes">'+
+      '<div class="mode-card soft an-main" onclick="anGuidedStart()"><div class="mc-t">Parcours complet · '+anList().length+' schémas</div>'+
+        '<div class="mc-d">Pour chaque schéma : tu <strong>observes</strong> calque par calque, tu retrouves les <strong>légendes cachées</strong>, puis tu le <strong>redessines</strong> sur le fond et tu te corriges.</div>'+
+        '<div class="mc-ex">À faire le jour du J0. Ta note de dessin compte comme le score de la session.</div></div>'+
+      '<div class="mode-card" onclick="anSoloPick(\'quiz\')"><div class="mc-t">Légendes cachées</div><div class="mc-d">Chaque légende devient un « ? ». Tu donnes le nom, puis tu touches pour vérifier.</div></div>'+
+      '<div class="mode-card" onclick="anSoloPick(\'loc\')"><div class="mc-t">Localiser</div><div class="mc-d">MedFlash te donne un nom, tu <strong>touches l\'endroit</strong> sur le schéma.</div></div>'+
+      '<div class="mode-card" onclick="anSoloPick(\'draw\')"><div class="mc-t">Je dessine</div><div class="mc-d">Tu choisis ce que tu redessines (muscles, vaisseaux, nerfs, ou seulement les légendes), directement à l\'Apple Pencil sur le fond.</div></div>'+
+    '</div>';
+}
+function anSoloPick(kind){
+  var p=anPane('learn');
+  var t={quiz:'Légendes cachées',loc:'Localiser',draw:'Je dessine'}[kind];
+  p.innerHTML='<div class="an-bar"><button class="btn btn-ghost btn-sm" onclick="anRun(null);anLearnHome()">← Exercices</button><b>'+t+'</b><span></span></div>'+
+    anPicker('anSolo_'+kind)+'<div id="anSoloArea"></div>';
+  anSoloGo(kind);
+}
+function anSolo_quiz(i){AN.si=i;anSoloPick('quiz');}function anSolo_loc(i){AN.si=i;anSoloPick('loc');}function anSolo_draw(i){AN.si=i;anSoloPick('draw');}
+function anSoloGo(kind){
+  var a=document.getElementById('anSoloArea');
+  if(kind==='quiz')anQuiz(a,{});
+  if(kind==='loc')anLoc(a,{n:8});
+  if(kind==='draw')anDrawChoose(a,{});
+}
+
+// ── Légendes cachées ──
+function anQuiz(area,o){
+  var S=anS(),R={rev:{},n:0};
+  var idx=S.labels.map(function(_,i){return i;}).filter(function(i){return S.labels[i].ty!=='o'||AN.bones;});
+  anRun({k:'quiz'});AN._q={area:area,o:o};
+  area.innerHTML='<div class="an-grid">'+anSheet('anQHost')+
+    '<aside class="panel-card an-side"><div class="an-h">Légendes cachées</div>'+
+    '<div class="an-tip">Dis le nom à voix haute (ou écris-le), puis touche le « ? » pour vérifier.</div>'+
+    '<div class="an-score"><b id="anQn">0</b> / '+idx.length+'<span>légendes retrouvées</span></div>'+
+    anSwitch('anQBone','Inclure les os',AN.bones,'AN.bones=!AN.bones;anQuiz(AN._q.area,AN._q.o)')+
+    '<div class="an-actions"><button class="btn btn-ghost btn-sm" id="anQAll">Tout révéler</button><button class="btn btn-ghost btn-sm" id="anQRe">Recommencer</button>'+
+    (o.next?'<button class="btn btn-primary btn-sm" id="anQNext">'+o.next+'</button>':'')+'</div></aside></div>';
+  function draw(){anRender(document.getElementById('anQHost'),S,{labels:'quiz',revealed:R.rev,bones:AN.bones,onLabel:function(i){if(!R.rev[i]){R.rev[i]=1;R.n++;document.getElementById('anQn').textContent=R.n;draw();}}});}
+  draw();
+  document.getElementById('anQAll').onclick=function(){idx.forEach(function(i){R.rev[i]=1;});draw();};
+  document.getElementById('anQRe').onclick=function(){R.rev={};R.n=0;document.getElementById('anQn').textContent=0;draw();};
+  if(o.next)document.getElementById('anQNext').onclick=o.onNext;
+}
+
+// ── Localiser ──
+function anPixels(S){
+  if(AN.pix[S.id])return AN.pix[S.id];
+  var sc=.5,W=Math.round(S.w*sc),H=Math.round(S.h*sc),out={sc:sc,W:W,H:H,L:{}};
+  out.ready=Promise.all(S.layers.map(function(L){return new Promise(function(res){
+    var im=new Image();im.onload=function(){var c=document.createElement('canvas');c.width=W;c.height=H;var x=c.getContext('2d');x.drawImage(im,0,0,W,H);
+      try{out.L[L.id]=x.getImageData(0,0,W,H).data;}catch(e){}res();};im.onerror=res;im.src=L.src;});}));
+  AN.pix[S.id]=out;return out;
+}
+function anPx(P,lid,x,y){var d=P.L[lid];if(!d)return null;var X=Math.round(x*P.sc),Y=Math.round(y*P.sc);if(X<0||Y<0||X>=P.W||Y>=P.H)return null;var i=(Y*P.W+X)*4;return [d[i],d[i+1],d[i+2],d[i+3]];}
+function anLocOk(S,lb,x,y){
+  var dmin=1e9;lb.to.forEach(function(p){dmin=Math.min(dmin,Math.hypot(p[0]-x,p[1]-y));});
+  if(dmin<=70)return true;
+  if(lb.ty==='r'||lb.ty==='o')return false;
+  var P=AN.pix[S.id];if(!P)return false;
+  var a=anPx(P,lb.dep,x,y);if(!a||a[3]<150)return false;
+  // même structure : même couleur que sous la flèche, et pas trop loin
+  return lb.to.some(function(p){var b=anPx(P,lb.dep,p[0],p[1]);if(!b)return false;
+    return Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])+Math.abs(a[2]-b[2])<45&&Math.hypot(p[0]-x,p[1]-y)<320;});
+}
+function anShuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function anLoc(area,o){
+  var S=anS();anPixels(S);
+  var pool=S.labels.map(function(_,i){return i;}).filter(function(i){var t=S.labels[i].ty;return t!=='o'&&t!=='r'&&t!=='g';});
+  var qs=anShuffle(pool).slice(0,Math.min(o.n||8,pool.length));
+  var R={i:0,ok:0,tries:0,done:false,first:true};
+  anRun({k:'loc'});
+  area.innerHTML='<div class="an-grid">'+anSheet('anLHost','an-tap')+
+    '<aside class="panel-card an-side"><div class="an-h">Localiser · <span id="anLc">1</span> / '+qs.length+'</div>'+
+    '<div class="an-ask" id="anLask"></div><div class="an-fb" id="anLfb">Touche la structure sur le schéma.</div>'+
+    '<div class="an-score"><b id="anLok">0</b><span>trouvées du premier coup</span></div>'+
+    '<div class="an-actions"><button class="btn btn-ghost btn-sm" id="anLskip">Montrer</button><button class="btn btn-primary btn-sm" id="anLnext" style="display:none">Suivante</button></div></aside></div>';
+  function ask(){
+    var lb=S.labels[qs[R.i]];R.first=true;R.done=false;
+    document.getElementById('anLc').textContent=R.i+1;
+    document.getElementById('anLask').innerHTML='<small>'+AN_TYPE_NM[lb.ty]+'</small><span style="color:'+AN_COL[lb.ty]+'">'+esc(lb.t)+'</span>';
+    var fb=document.getElementById('anLfb');fb.className='an-fb';fb.textContent='Touche la structure sur le schéma.';
+    document.getElementById('anLnext').style.display='none';document.getElementById('anLskip').style.display='';
+    draw(null);
+  }
+  function draw(show,mark){
+    var svg=anRender(document.getElementById('anLHost'),S,{labels:show==null?'none':'show',pick:show==null?null:[show],hit:!R.done,onHit:hit,bones:true});
+    if(mark){anEl('circle',{cx:mark[0],cy:mark[1],r:22,fill:mark[2]?'rgba(34,197,94,.35)':'rgba(239,68,68,.35)',stroke:mark[2]?'#16a34a':'#dc2626','stroke-width':6},svg);}
+  }
+  function hit(x,y){
+    if(R.done)return;var lb=S.labels[qs[R.i]];
+    var ok=anLocOk(S,lb,x,y),fb=document.getElementById('anLfb');
+    if(ok){if(R.first){R.ok++;document.getElementById('anLok').textContent=R.ok;}R.done=true;fb.className='an-fb ok';fb.textContent=R.first?'Oui, du premier coup.':'Oui, c\'est là.';draw(qs[R.i],[x,y,1]);end();}
+    else{R.first=false;fb.className='an-fb ko';fb.textContent='Non, pas ici. Réessaie ou touche « Montrer ».';draw(null,[x,y,0]);}
+  }
+  function end(){document.getElementById('anLskip').style.display='none';var n=document.getElementById('anLnext');n.style.display='';n.textContent=R.i+1<qs.length?'Suivante':(o.next||'Terminer');}
+  document.getElementById('anLskip').onclick=function(){R.first=false;R.done=true;var fb=document.getElementById('anLfb');fb.className='an-fb ko';fb.textContent='La voici.';draw(qs[R.i]);end();};
+  document.getElementById('anLnext').onclick=function(){
+    R.i++;
+    if(R.i<qs.length){ask();return;}
+    var pct=Math.round(R.ok/qs.length*100);
+    if(o.onEnd){o.onEnd(pct);return;}
+    document.getElementById('anLfb').className='an-fb';document.getElementById('anLfb').textContent='Terminé : '+R.ok+' / '+qs.length+' du premier coup ('+pct+' %).';
+    var n=document.getElementById('anLnext');n.textContent='Recommencer';n.onclick=function(){anLoc(area,o);};
+  };
+  ask();
+}
+
+// ── Je dessine (Apple Pencil sur le fond) ──
+function anDrawChoose(area,o){
+  var S=anS();
+  area.innerHTML='<div class="kind-panel an-choose"><div class="an-h" style="margin-top:0">Que veux-tu redessiner ?</div>'+
+    '<div class="an-gp">'+anGroupsOf(S).map(function(g){return '<button class="an-g" onclick="anDrawStart(\''+g.k+'\')"><b>'+g.nm+'</b>'+(g.d?'<small>'+g.d+'</small>':'')+'</button>';}).join('')+'</div>'+
+    '<div class="an-tip" style="margin-top:12px">Le fond (les os) t\'est toujours donné, comme à l\'examen.</div></div>';
+  AN._drawArea=area;AN._drawOpts=o;
+}
+function anDrawStart(g){anDraw(AN._drawArea,Object.assign({},AN._drawOpts,{g:g}));}
+function anDrawHide(S,g){
+  if(g==='lbl')return [];
+  if(g==='all')return S.layers.filter(function(L){return L.ty!=='fond';}).map(function(L){return L.id;});
+  var G=AN_GROUPS.find(function(x){return x.k===g;});return anLayersOf(S,G.ty);
+}
+function anDraw(area,o){
+  var S=anS(),hide=anDrawHide(S,o.g),G=AN_GROUPS.find(function(x){return x.k===o.g;});
+  var R={st:[],cur:null,col:'#d62828',w:6,er:false,corr:false,mix:.55};
+  anRun({k:'draw'});
+  var cols=[['#1d1d1f','Noir'],['#b4540e','Muscle'],['#d62828','Artère'],['#1f63d6','Veine'],['#e0ac00','Nerf'],['#23883a','Ligament']];
+  area.innerHTML='<div class="an-grid">'+
+    '<div class="an-sheet"><div class="an-cap"><b>'+esc(S.title)+'</b><span>À dessiner : '+esc(G.nm.toLowerCase())+'</span>'+AN_FULLBTN+'</div>'+
+      '<div class="an-tools" id="anTools">'+cols.map(function(c){return '<button class="an-col'+(c[0]===R.col?' on':'')+'" style="--c:'+c[0]+'" data-c="'+c[0]+'" title="'+c[1]+'"></button>';}).join('')+
+      '<span class="an-sep"></span><button class="tog" data-w="4">Fin</button><button class="tog on" data-w="7">Moyen</button><button class="tog" data-w="14">Épais</button>'+
+      '<span class="an-sep"></span><button class="tog" id="anEr">Gomme</button><button class="tog" id="anUndo">Annuler</button><button class="tog" id="anClr">Effacer</button></div>'+
+      '<div class="an-host an-canvas-wrap" id="anDHost"><canvas id="anCv"></canvas></div></div>'+
+    '<aside class="panel-card an-side"><div class="an-h">Je dessine · '+esc(G.nm)+'</div>'+
+      '<div class="an-tip" id="anDtip">'+(o.g==='lbl'?'Tout est dessiné mais sans légende : écris le nom de chaque structure au bout de sa flèche, ou dis-le.':'Dessine directement sur le fond à l\'Apple Pencil (ou sur ta feuille), avec les légendes. Puis compare.')+'</div>'+
+      '<button class="btn btn-primary" id="anCorr">Voir la correction</button>'+
+      '<div id="anCorrBox" style="display:none">'+
+        '<div class="an-h">Correction par-dessus ton dessin</div>'+
+        '<div class="an-op"><input type="range" min="0" max="100" value="55" id="anMix" aria-label="Opacité de la correction"><span>correction</span></div>'+
+        '<div class="an-h">Comment ça s\'est passé ?</div><div class="an-grade">'+AN_GRADE.map(function(x){return '<button class="btn" style="--g:'+x.c+'" data-g="'+x.k+'">'+x.nm+'</button>';}).join('')+'</div>'+
+      '</div>'+
+      (o.inRun?'':'<div class="an-actions"><button class="btn btn-ghost btn-sm" onclick="anDrawChoose(AN._drawArea,AN._drawOpts)">Changer d\'exercice</button></div>')+
+    '</aside></div>';
+  var host=document.getElementById('anDHost'),cv=document.getElementById('anCv'),svg=null;
+  function base(){
+    var vis={},op={};S.layers.forEach(function(L){vis[L.id]=hide.indexOf(L.id)<0||R.corr;op[L.id]=1;});
+    if(R.corr)hide.forEach(function(id){op[id]=R.mix;});
+    // les légendes de ce qu'on dessine disparaissent avec leur calque (calque masqué = légende masquée)
+    svg=anRender(host,S,{vis:vis,op:op,labels:R.corr?'show':(o.g==='lbl'?'none':'show'),bones:R.corr||!o.exam});
+    host.appendChild(cv);size();
+  }
+  function size(){var r=svg.getBoundingClientRect(),d=window.devicePixelRatio||1;cv.width=Math.round(r.width*d);cv.height=Math.round(r.height*d);cv.style.width=r.width+'px';cv.style.height=r.height+'px';paint();}
+  function toV(e){var p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;var q=p.matrixTransform(svg.getScreenCTM().inverse());return [q.x,q.y];}
+  function paint(){
+    var x=cv.getContext('2d'),vb=S.vb,k=cv.width/vb[2];x.setTransform(1,0,0,1,0,0);x.clearRect(0,0,cv.width,cv.height);
+    x.setTransform(k,0,0,k,-vb[0]*k,-vb[1]*k);x.lineCap='round';x.lineJoin='round';
+    R.st.concat(R.cur?[R.cur]:[]).forEach(function(s){
+      x.globalCompositeOperation=s.er?'destination-out':'source-over';x.strokeStyle=s.c;x.lineWidth=s.w*(vb[2]/900);
+      x.beginPath();s.p.forEach(function(p,i){if(i)x.lineTo(p[0],p[1]);else x.moveTo(p[0],p[1]);});if(s.p.length===1)x.lineTo(s.p[0][0]+.1,s.p[0][1]);x.stroke();
+    });x.globalCompositeOperation='source-over';
+    cv.style.opacity=R.corr?.9:1;
+  }
+  cv.addEventListener('pointerdown',function(e){e.preventDefault();cv.setPointerCapture(e.pointerId);R.cur={c:R.col,w:R.er?R.w*3:R.w*(e.pointerType==='pen'?Math.max(.6,e.pressure*1.6):1),er:R.er,p:[toV(e)]};paint();});
+  cv.addEventListener('pointermove',function(e){if(!R.cur)return;e.preventDefault();var ev=e.getCoalescedEvents?e.getCoalescedEvents():[e];ev.forEach(function(q){R.cur.p.push(toV(q));});paint();});
+  function up(){if(R.cur){R.st.push(R.cur);R.cur=null;paint();}}
+  cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+  var tools=document.getElementById('anTools');
+  tools.querySelectorAll('.an-col').forEach(function(b){b.onclick=function(){R.col=b.dataset.c;R.er=false;document.getElementById('anEr').classList.remove('on');tools.querySelectorAll('.an-col').forEach(function(x){x.classList.toggle('on',x===b);});};});
+  tools.querySelectorAll('[data-w]').forEach(function(b){b.onclick=function(){R.w=+b.dataset.w;tools.querySelectorAll('[data-w]').forEach(function(x){x.classList.toggle('on',x===b);});};});
+  document.getElementById('anEr').onclick=function(){R.er=!R.er;this.classList.toggle('on',R.er);};
+  document.getElementById('anUndo').onclick=function(){if(!R.st.length&&R.undoAll){R.st=R.undoAll;R.undoAll=null;}else R.st.pop();paint();};
+  document.getElementById('anClr').onclick=function(){if(!R.st.length)return;R.undoAll=R.st;R.st=[];paint();toast('Dessin effacé · « Annuler » le fait revenir');};
+  document.getElementById('anCorr').onclick=function(){R.corr=true;this.style.display='none';document.getElementById('anCorrBox').style.display='';base();};
+  document.getElementById('anMix').oninput=function(){R.mix=this.value/100;hide.forEach(function(id){var im=host.querySelector('image[data-l="'+id+'"]');if(im)im.style.opacity=R.mix;});};
+  document.querySelectorAll('.an-grade [data-g]').forEach(function(b){b.onclick=function(){
+    var g=+b.dataset.g;document.querySelectorAll('.an-grade [data-g]').forEach(function(x){x.classList.toggle('on',x===b);});
+    if(o.onGrade){o.onGrade(g);return;}
+    toast(g===100?'Parfait, schéma acquis':g===60?'Presque : refais-le demain':'À reprendre : relis le schéma en mode Révision');
+  };});
+  var ro=window.ResizeObserver?new ResizeObserver(function(){if(svg)size();}):null;if(ro)ro.observe(host);
+  base();
+}
+
+// ── Parcours guidé (J0) ──
+function anGuidedStart(){
+  var list=anList(),steps=[];
+  list.forEach(function(S,i){steps.push({s:i,k:'obs'},{s:i,k:'quiz'},{s:i,k:'draw'});});
+  AN.G={steps:steps,i:0,grades:{}};anGuided();
+}
+function anGuided(){
+  var G=AN.G,st=G.steps[G.i],p=anPane('learn');AN.si=st.s;
+  var S=anS(),nm={obs:'Observer',quiz:'Légendes cachées',draw:'Je dessine'}[st.k];
+  var pct=Math.round(G.i/G.steps.length*100);
+  p.innerHTML='<div class="an-bar"><button class="btn btn-ghost btn-sm" onclick="anRun(null);anLearnHome()">✕ Quitter</button>'+
+    '<b>Schéma '+(st.s+1)+' / '+anList().length+' · '+nm+'</b><div class="pbar"><div class="pbar-fill" style="width:'+pct+'%"></div></div></div><div id="anGArea"></div>';
+  var a=document.getElementById('anGArea');
+  var next=function(){G.i++;if(G.i<G.steps.length)anGuided();else anGuidedEnd();};
+  if(st.k==='obs'){
+    anResetView();
+    a.innerHTML='<div class="an-grid">'+anSheet('anOHost')+'<aside class="panel-card an-side"><div class="an-h">Observer</div>'+
+      '<div class="an-tip">Affiche les calques un par un : repère où passe chaque vaisseau et chaque nerf par rapport aux muscles.</div><div id="anObsRows" class="an-lrow"></div>'+
+      '<button class="btn btn-primary" id="anONext">J\'ai bien regardé</button></aside></div>';
+    window._anObsDraw=function(){anRender(document.getElementById('anOHost'),S,{vis:AN.vis,op:AN.op,bones:true});};
+    anLayerRowsFor('_anObsDraw');_anObsDraw();
+    document.getElementById('anONext').onclick=next;
+  }
+  if(st.k==='quiz')anQuiz(a,{next:'Continuer',onNext:next});
+  if(st.k==='draw'){AN._drawArea=a;AN._drawOpts={};anDraw(a,{g:'all',inRun:1,onGrade:function(g){G.grades[st.s]=g;setTimeout(next,450);}});}
+}
+function anLayerRowsFor(fn){ // mêmes interrupteurs qu'en Révision, branchés sur un autre schéma
+  var el=document.getElementById('anObsRows');var S=anS();
+  el.innerHTML=S.layers.map(function(L){var on=AN.vis[L.id]!==false;
+    return '<button class="tog an-lc'+(on?' on':'')+'" onclick="AN.vis[\''+L.id+'\']='+(!on)+';anLayerRowsFor(\''+fn+'\');'+fn+'()"><i class="an-dot" style="background:'+AN_SW[L.ty]+'"></i>'+esc(L.nm.replace(/ \(.*\)/,''))+'</button>';}).join('');
+}
+function anGuidedEnd(){
+  var G=AN.G,vals=Object.keys(G.grades).map(function(k){return G.grades[k];});
+  var sc=vals.length?Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length):0;
+  anSaveSession(sc,'schemas-apprentissage');
+  anResult(anPane('learn'),'Apprentissage des schémas terminé',sc,anList().map(function(S,i){return [S.title,G.grades[i]];}),'anLearnHome()');
+}
+function anSaveSession(sc,mode){
+  var d=anDeck();d.sessions=d.sessions||[];
+  d.sessions.push({date:Date.now(),score:sc,yes:0,total:anList().length,mode:mode});
+  d.pending=false;
+  try{completeEntry(d,sc);}catch(e){console.error(e);}
+  dbSave();
+}
+function anResult(p,title,sc,rows,back){
+  var nx=(anDeck().plan||[]).filter(function(e){return !e.done;}).sort(function(a,b){return a.date<b.date?-1:1;})[0];
+  var v=sc>=80?'v-good':sc>=50?'v-mid':'v-bad';
+  p.innerHTML='<div class="result-card"><div class="r-title">'+title+'</div><div class="r-sub">Score de la session : <b style="color:var(--tx)">'+sc+' %</b></div>'+
+    '<div class="an-res">'+rows.map(function(r){var v=r[1],g=r[2]?null:AN_GRADE.find(function(x){return x.k===v;});
+      var c=v==null?'var(--tx3)':v>=80?'var(--gr)':v>=50?'var(--ye)':'var(--rd)';
+      return '<div><span>'+esc(r[0])+'</span><b style="color:'+c+'">'+(v==null?'—':g?g.nm:v+' %')+'</b></div>';}).join('')+'</div>'+
+    '<div class="verdict '+v+'"><b>'+(sc>=80?'Schémas acquis':sc>=50?'Presque acquis':'À reprendre')+'</b>Session enregistrée dans ton Planning.'+(nx?' Prochaine révision : '+esc(nx.date.split('-').reverse().join('/'))+'.':'')+'</div>'+
+    '<div class="r-btns"><button class="btn btn-ghost" onclick="'+back+'">Retour</button><button class="btn btn-primary" onclick="switchTab(\'stats\')">Voir le planning</button></div></div>';
+}
+
+// ═══ ÉVALUATION : comme à l'examen ═══
+function anEvalHome(){
+  var p=anPane('eval');
+  AN.evSel=AN.evSel||anList().map(function(){return true;});
+  p.innerHTML='<div class="kind-panel"><div style="font-family:var(--font);font-size:21px;font-weight:700;margin-bottom:6px">Évaluation des schémas</div>'+
+    '<div style="color:var(--tx2);font-size:14px;margin-bottom:14px">Comme à l\'examen : pour chaque schéma, tu <b>localises</b> 5 structures, puis on te donne le <b>fond seul</b> et tu le <b>redessines avec ses légendes</b>. Tu te corriges, et le score met ton planning à jour.</div>'+
+    '<div class="an-h">Schémas évalués</div>'+anList().map(function(S,i){return anSwitch('anEv'+i,esc(S.title),AN.evSel[i],'AN.evSel['+i+']=this.checked');}).join('')+
+    '<div class="an-h">Ce que tu dois ajouter sur le fond</div><div class="an-chips" id="anEvG">'+
+      [['all','Tout le schéma'],['vxn','Vaisseaux et nerfs'],['lbl','Légendes seulement']].map(function(x,i){return '<button class="tog'+((AN.evG||'all')===x[0]?' on':'')+'" data-g="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>'+
+    '<div class="an-tip" style="margin-top:8px">« Légendes seulement » : quand l\'examen te donne un schéma presque complet et qu\'il faut juste nommer (les innervations, par exemple).</div>'+
+    '<button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="anEvalStart()">Commencer l\'évaluation</button></div>';
+  p.querySelectorAll('#anEvG [data-g]').forEach(function(b){b.onclick=function(){AN.evG=b.dataset.g;p.querySelectorAll('#anEvG .tog').forEach(function(x){x.classList.toggle('on',x===b);});};});
+}
+function anEvalStart(){
+  var ids=anList().map(function(_,i){return i;}).filter(function(i){return AN.evSel[i];});
+  if(!ids.length){toast('Choisis au moins un schéma');return;}
+  AN.E={ids:ids,j:0,ph:'loc',res:{}};anEval();
+}
+function anEval(){
+  var E=AN.E,p=anPane('eval');AN.si=E.ids[E.j];var S=anS();
+  var n=E.ids.length,pct=Math.round((E.j*2+(E.ph==='draw'?1:0))/(n*2)*100);
+  p.innerHTML='<div class="an-bar"><button class="btn btn-ghost btn-sm" onclick="anRun(null);anEvalHome()">✕ Abandonner</button>'+
+    '<b>Schéma '+(E.j+1)+' / '+n+' · '+(E.ph==='loc'?'Localiser':'Redessiner')+'</b><div class="pbar"><div class="pbar-fill" style="width:'+pct+'%"></div></div></div><div id="anEArea"></div>';
+  var a=document.getElementById('anEArea');E.res[S.id]=E.res[S.id]||{};
+  if(E.ph==='loc')anLoc(a,{n:5,next:'Redessiner le schéma',onEnd:function(v){E.res[S.id].loc=v;E.ph='draw';anEval();}});
+  else{
+    var g=AN.evG||'all';
+    var done=function(v){E.res[S.id].draw=v;setTimeout(function(){E.j++;E.ph='loc';if(E.j<E.ids.length)anEval();else anEvalEnd();},450);};
+    AN._drawArea=a;AN._drawOpts={};
+    if(g==='vxn')anDrawCustom(a,anLayersOf(S,['artere','veine','nerf']),'Vaisseaux et nerfs',done);
+    else anDraw(a,{g:g,inRun:1,exam:1,onGrade:done});
+  }
+}
+function anDrawCustom(a,hide,nm,onGrade){
+  var key='_c'+Date.now();AN_GROUPS.push({k:key,nm:nm,ty:[]});
+  var S=anS(),save=anDrawHide;
+  anDrawHide=function(S2,g){return g===key?hide:save(S2,g);};
+  anDraw(a,{g:key,inRun:1,exam:1,onGrade:onGrade});
+  anDrawHide=save;AN_GROUPS.pop();
+}
+function anEvalEnd(){
+  var E=AN.E,rows=[],tot=0;
+  E.ids.forEach(function(i){var S=anList()[i],r=E.res[S.id]||{};var v=Math.round(((r.loc||0)+(r.draw||0))/2);tot+=v;rows.push([S.title,v,1]);});
+  var sc=Math.round(tot/E.ids.length);
+  anSaveSession(sc,'schemas-evaluation');
+  anResult(anPane('eval'),'Évaluation des schémas terminée',sc,rows,'anEvalHome()');
+}
+
 </script>
 </body>
 </html>

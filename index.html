@@ -833,6 +833,72 @@ nav .nav-r{margin-left:auto}
 @media(min-width:641px) and (max-width:899px){.hero-track{margin:0 -28px;padding:0 28px;scroll-padding:0 28px}.hero-track .mf-hero{flex-basis:calc(100% - 40px)}}
 @media(min-width:900px){.hero-track{margin:0 -40px;padding:0 40px;scroll-padding:0 40px}.hero-track .mf-hero{flex-basis:calc(100% - 60px)}}
 #homePendingSec .shelf-h{margin-top:18px}
+/* Rythme de révision */
+:root{--wdec:#8e8cff;--wjan:#2dd4bf}
+body.light{--wdec:#4f46e5;--wjan:#0f766e}
+.wdec{--wc:var(--wdec)}.wjan{--wc:var(--wjan)}
+#homeRythme:empty{display:none}
+.ry-banner{display:flex;align-items:center;gap:13px;width:100%;margin:14px 0 4px;padding:14px;border:.5px solid var(--bd);border-radius:20px;background:var(--s1);color:var(--tx);text-align:left;cursor:pointer;font:inherit;box-shadow:var(--sh2)}
+.ry-ring{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none}
+.ry-ring b{width:42px;height:42px;border-radius:50%;background:var(--s1);display:flex;align-items:center;justify-content:center;font:800 20px var(--font)}
+.ry-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ry-t{font:700 16px/1.25 var(--font)}
+.ry-s{font-size:13px;color:var(--tx2)}
+.ry-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+.panel-head .ry-pills{margin-top:0}
+.ry-pill{font:600 11px/1 var(--font);padding:5px 8px;border-radius:999px;background:rgba(48,209,88,.15);color:var(--gr)}
+.ry-pill.juste{background:rgba(255,159,10,.16);color:var(--ye)}
+.ry-pill.retard{background:rgba(255,69,58,.15);color:var(--rd)}
+.ry-pill.qcm{background:var(--fill);color:var(--tx2)}
+body.light .ry-pill{color:#1a7f37}body.light .ry-pill.juste{color:#8a5000}body.light .ry-pill.retard{color:#b42318}body.light .ry-pill.qcm{color:var(--tx2)}
+.ry-chev{color:var(--tx3);font-size:18px;display:flex}
+.cvb.rec{background:var(--tx);color:var(--bg);border-color:transparent}
+.ry-plan{margin-bottom:16px}
+.ry-plan .panel-head{flex-wrap:wrap}
+.ry-lane{display:flex;align-items:center;gap:8px;margin-top:6px}
+.ry-ln{width:30px;font:700 11px var(--font);flex:none}
+.ry-bar{flex:1;display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--s2)}
+.ry-bar i{flex:1;min-width:0}
+.ry-bar i.a,.ry-legend i.a{background:var(--wc)}
+.ry-bar i.dz,.ry-legend i.dz{background:color-mix(in srgb,var(--wc) 38%,transparent)}
+.ry-legend i.dz{background:color-mix(in srgb,var(--wjan) 38%,transparent)}
+.ry-bar i.q,.ry-legend i.q{background:var(--ye)}
+.ry-bar i.x{background:var(--tx)}
+.ry-bar i.l,.ry-legend i.l{background:color-mix(in srgb,var(--tx2) 35%,transparent)}
+.ry-legend i.r{border:1px solid var(--tx3);box-sizing:border-box}
+.ry-marks{position:relative;height:16px;margin:4px 0 0 38px;font-size:11px;color:var(--tx2)}
+.ry-marks span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.ry-marks span:first-child{transform:none}.ry-marks span:last-child{transform:translateX(-100%)}
+.ry-legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:8px;font-size:11px;color:var(--tx2);--wc:var(--wdec)}
+.ry-legend span{display:inline-flex;align-items:center;gap:5px}
+.ry-legend i{width:9px;height:9px;border-radius:2px;display:inline-block}
+.ry-sub{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:18px 0 8px}
+.ry-sub h4{margin:0;font:700 15px var(--font)}
+.ry-sub span{font-size:12px;color:var(--tx2)}
+.ry-note{font-size:13px;color:var(--tx2);margin-bottom:8px}
+.ry-picks{display:flex;flex-direction:column;gap:8px}
+.ry-pick{display:flex;align-items:center;gap:10px;background:var(--s2);border-radius:14px;padding:9px 10px 9px 12px}
+.ry-dot{width:6px;height:34px;border-radius:3px;flex:none}
+.ry-pm{flex:1;min-width:0;display:flex;flex-direction:column}
+.ry-pf{font:600 12px var(--font)}
+.ry-pt{font:600 15px var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ry-swap{width:36px;height:36px;border-radius:10px;border:0;background:var(--s1);color:var(--tx2);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;font-size:17px}
+.ry-week{border:.5px solid var(--bd);border-radius:14px;overflow:hidden}
+.ry-day{display:flex;align-items:center;gap:7px;padding:9px 12px;border-top:.5px solid var(--bd)}
+.ry-day:first-child{border-top:0}
+.ry-day.on{background:color-mix(in srgb,var(--wdec) 10%,transparent)}
+.ry-dn{width:36px;display:flex;flex-direction:column;flex:none}
+.ry-dn span{font:600 10px var(--font);color:var(--tx2)}.ry-dn b{font:800 17px var(--font)}
+.ry-di{flex:1;min-width:0;font-size:12px;color:var(--tx2)}
+.ry-chip{font:700 12px/1 var(--font);padding:5px 7px;border-radius:7px;white-space:nowrap;background:color-mix(in srgb,var(--wc) 16%,transparent);color:var(--wc)}
+.ry-chip.on{background:var(--wc);color:#000}
+body.light .ry-chip.on{color:#fff}
+.ry-chip.j{background:var(--s2);color:var(--tx2)}
+.ry-alert{display:flex;gap:9px;align-items:flex-start;margin-top:12px;padding:10px 12px;border-radius:14px;background:rgba(255,159,10,.13);font-size:13px;line-height:1.4;color:var(--tx)}
+.ry-alert svg{color:var(--ye);margin-top:2px}
+.ry-how{margin-top:14px;font-size:13px;color:var(--tx2);line-height:1.45}
+.ry-how summary{cursor:pointer;color:var(--ac);font-weight:600}
+.ry-how ul{margin:8px 0;padding-left:18px}.ry-how li{margin:4px 0}.ry-how p{margin:6px 0 0}
 .hero-h h3,.hcount,.hero-h .mini-link{white-space:nowrap}
 @media(max-width:640px){.hnav{display:none!important}}
 
@@ -1078,6 +1144,7 @@ body.an-noscroll{overflow:hidden}
 <!-- ACCUEIL -->
 <div id="sHome" class="screen">
   <div class="hh"><div class="home-title" id="homeHello">Bonjour</div><div class="home-sub" id="homeSub"></div></div>
+  <div id="homeRythme"></div>
   <div class="shelf-h hero-h" id="heroHead"></div>
   <div id="homeHero"></div>
   <div id="homePendingSec"><div class="shelf-h"><h3>Cours à démarrer</h3><button class="mini-link" onclick="openReviews()">Tout voir</button></div>
@@ -1254,6 +1321,7 @@ body.an-noscroll{overflow:hidden}
     <div class="home-title">Calendrier</div>
     <div class="home-sub">Toutes tes révisions planifiées, matières confondues</div>
   </div>
+  <div id="calRythme"></div>
   <div class="kpi-grid" id="calKpi"></div>
   <div class="cal-head">
     <div class="cal-nav">
@@ -3590,13 +3658,15 @@ function heroItems(){
   var t=today(),due=allDue().filter(function(x){return x.entry.date<=t;});
   var out=due.map(function(x){return {f:x.folder,d:x.deck,late:diffDays(x.entry.date,t),off:x.entry.off,kind:'due'};});
   if(!out.length){
-    LF().forEach(function(f){(f.decks||[]).forEach(function(d){if(out.length<8&&deckPending(d)&&(d.cards||[]).length)out.push({f:f,d:d,kind:'new'});});});
+    LF().forEach(function(f){(f.decks||[]).forEach(function(d){if(deckPending(d)&&(d.cards||[]).length)out.push({f:f,d:d,kind:'new'});});});
+    if(RY)out.sort(function(a,b){return (RY.rec[b.d.id]?1:0)-(RY.rec[a.d.id]?1:0);});
+    out=out.slice(0,8);
   }
   return out;
 }
 function heroSlide(x){
   var f=x.f,d=x.d,n=(d.cards||[]).length;
-  var eb=esc(f.name)+' · '+(x.kind==='new'?'J0 à démarrer':(x.late>0?'en retard de '+x.late+' j':'J'+x.off+' · aujourd\'hui'));
+  var eb=esc(f.name)+' · '+(x.kind==='new'?(RY&&RY.rec[d.id]?'conseillé aujourd\'hui':'J0 à démarrer'):(x.late>0?'en retard de '+x.late+' j':'J'+x.off+' · aujourd\'hui'+(RY&&RY.wait[d.id]?' · peut attendre demain':'')));
   var lay=MF_LAY[hashN(d.id)%MF_LAY.length],S=MF_SUBJ[subjKey(f)],hh=hashN(d.id),ca=courseArt(f,d);
   var art=ca&&MF_ART[ca]?'<i class="hph" style="background-image:url('+MF_ART[ca][0]+')"></i>':lay.map(function(b,i){var a=MF_ART[S.imgs[(hh+i)%S.imgs.length]];return a?'<i style="left:'+b[0]+'%;top:'+b[1]+'%;width:'+b[2]+'%;height:'+b[3]+'%;transform:rotate('+b[4]+'deg);background-image:url('+a[0]+')"></i>':'';}).join('');
   return '<div class="mf-hero" style="'+subjTint(f)+'"><div class="hart">'+art+'</div><div class="hx">'+
@@ -3653,10 +3723,13 @@ function renderDashboard(){
 }
 function renderHomeToday(){
   var t=today(),due=allDue().filter(function(x){return x.entry.date<=t;});
+  renderHomeRythme();
   renderHero();
   var list=document.getElementById('homeDueList');
   if(list)list.innerHTML=due.length?due.map(function(x){var l=diffDays(x.entry.date,t);return shelfItem(x.folder,x.deck,l>0?'Retard '+l+' j':'J'+x.entry.off,l>0?'late':'');}).join(''):'<div class="sh-empty">Rien à réviser aujourd\'hui</div>';
-  var pend=[];LF().forEach(function(f){(f.decks||[]).forEach(function(d){if(deckPending(d)&&(d.cards||[]).length)pend.push(shelfItem(f,d,'J0','new'));});});
+  var pend=[],prec=[];LF().forEach(function(f){(f.decks||[]).forEach(function(d){if(deckPending(d)&&(d.cards||[]).length){if(RY&&RY.rec[d.id])prec.push(shelfItem(f,d,'Conseillé','rec'));else pend.push(shelfItem(f,d,'J0','new'));}});});
+  pend=prec.concat(pend);
+  var ph=document.querySelector('#homePendingSec h3');if(ph)ph.innerHTML='Cours à démarrer'+(pend.length?' <span style="color:var(--tx2);font-weight:600">· '+pend.length+'</span>':'');
   var pb=document.getElementById('homePending');if(pb){pb.innerHTML=pend.join('');var ps=document.getElementById('homePendingSec');if(ps)ps.style.display=pend.length?'':'none';}
   var box=document.getElementById('homePendingPanel');if(box){box.innerHTML='<div class="panel-head"><h3>Progression par matière</h3><button class="mini-link" onclick="openSubjects()">Matières</button></div>'+subjectProgressHtml();}
   var sub=document.getElementById('homeSub');if(sub)sub.textContent=due.length?(due.length+' révision'+(due.length>1?'s':'')+' à faire aujourd\'hui'):'Rien à réviser aujourd\'hui';
@@ -4295,6 +4368,235 @@ function regenCurrentPlan(){
 }
 
 // ════════════════════════════════════════
+// RYTHME DE RÉVISION : combien de cours démarrer par jour pour être prêt aux partiels
+// ════════════════════════════════════════
+// Deux vagues de partiels. Une matière rejoint une vague par sa date d'examen ; sans date, par son nom.
+var RY_WAVES=[
+  {id:'dec',label:'Décembre',short:'Déc',exam:'2026-12-16',re:/anat|biomedecine quant|informatique|genetique/},
+  {id:'jan',label:'Janvier',short:'Jan',exam:'2027-01-14',re:/ssh|sciences humaines|bmc|parasit|virolog/}
+];
+var RY_MARGE=3;          // jours sans nouveau cours juste avant chaque partiel (QCM, annales)
+var RY_J_BEAUCOUP=6;     // au-delà de ce nombre de J, un jour léger ne propose que les J (sauf urgence)
+var RY_DOUCEUR=0.5;      // part laissée à la vague suivante tant que la précédente n'est pas passée
+var RY_MAX=6;           // plafond de cours conseillés par jour et par vague, même en retard
+var RY_OK=2.5,RY_JUSTE=3.5; // cours par jour « normal » : en dessous dans les temps, au-dessus en retard
+var RY=null;
+var RY_IC={swap:'<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13l-3 -3M20 16h-13l3 3"/></svg>',clock:'<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'};
+
+function ryWaveOf(name,exam){
+  var i;
+  if(exam){for(i=0;i<RY_WAVES.length;i++)if(RY_WAVES[i].exam===exam)return RY_WAVES[i];return null;}
+  var n=recNorm(name);
+  for(i=0;i<RY_WAVES.length;i++)if(RY_WAVES[i].re.test(n))return RY_WAVES[i];
+  return null;
+}
+// Type de journée, indépendamment de la vague : partiel, repos, léger ou normal
+function ryDayTag(ds){
+  var md=ds.slice(5),i;
+  for(i=0;i<RY_WAVES.length;i++)if(RY_WAVES[i].exam===ds)return 'exam';
+  if(md==='12-25'||md==='01-01')return 'repos';
+  if(md==='12-24'||md==='12-31')return 'leger';
+  for(i=0;i<RY_WAVES.length-1;i++){ // après un partiel (sauf le dernier) : 2 jours légers puis le week-end de repos
+    var k=diffDays(RY_WAVES[i].exam,ds);
+    if(k>=1&&k<=2)return 'leger';
+    if(k>=3){var st=addDays(RY_WAVES[i].exam,3),sp=Math.min(1,(7-parseD(st).getDay())%7);if(ds<=addDays(st,sp))return 'repos';}
+  }
+  return 'normal';
+}
+// Poids d'une journée pour une vague (1 = journée normale de travail)
+function ryWeight(ds,w,fac){
+  var tag=ryDayTag(ds);
+  if(tag==='exam'||tag==='repos')return 0;
+  if(ds>addDays(w.exam,-(RY_MARGE+1)))return 0;
+  var n=fac[ds]||0,b=tag==='leger'?0.5:n>=4?0.7:n>=1?1:1.25;
+  RY_WAVES.forEach(function(e){
+    if(e.exam>=w.exam)return;
+    if(ds<=addDays(e.exam,-(RY_MARGE+1)))b*=RY_DOUCEUR;else if(ds<=e.exam)b=0;
+  });
+  return b;
+}
+function rySunday(ds){return addDays(ds,(7-parseD(ds).getDay())%7);}
+function ryRound(x){var n=Math.floor(x+0.5);if(n===0&&x>=0.3)n=1;return n;}
+function rySkipGet(){var t=today(),s=null;try{s=JSON.parse(localStorage.getItem('mf_ry_skip')||'null');}catch(e){}return s&&s.d===t?s.ids:{};}
+function rySkip(id){
+  var ids=rySkipGet();ids[id]=1;
+  try{localStorage.setItem('mf_ry_skip',JSON.stringify({d:today(),ids:ids}));}catch(e){}
+  toast('Autre cours proposé');
+  renderHomeToday();renderRythmePlan();
+}
+// Le cœur du calcul
+function ryCompute(){
+  var t=today(),c=suiviCache(),S=(c&&c.subj)||[],fac={},sc={};
+  S.forEach(function(o){(o.cs||[]).forEach(function(x){if(x.d)fac[x.d]=(fac[x.d]||0)+1;if(x.id)sc[x.id]=x;});});
+  var W=RY_WAVES.filter(function(w){return w.exam>=t;}).map(function(w){
+    return {w:w,cut:addDays(w.exam,-(RY_MARGE+1)),pend:[],arr:{},sun:{},future:0,done:0,doneToday:0};
+  });
+  var byId=function(w){return w?W.filter(function(x){return x.w===w;})[0]:null;};
+  // 1) MedFlash : cours démarrés et cours à démarrer
+  LF().forEach(function(f){
+    var X=byId(ryWaveOf(f.name,f.examDate));if(!X)return;
+    (f.decks||[]).forEach(function(d){
+      if(deckPending(d)){if((d.cards||[]).length)X.pend.push({f:f,d:d,fd:(d.sid&&sc[d.sid]&&sc[d.sid].d)||''});}
+      else{X.done++;if(tsToStr(d.createdAt)===t)X.doneToday++;}
+    });
+  });
+  // 2) Suivi : cours pas encore dans MedFlash (ronéo pas arrivée, ou arrivée mais pas encore importée)
+  S.forEach(function(o){
+    var f=recFolderFor(o.n),X=byId(f?ryWaveOf(f.name,f.examDate):ryWaveOf(o.n,null));if(!X)return;
+    (o.cs||[]).forEach(function(x){
+      if(x.st==='appris'||recPresent(o.n,x.t,x.id))return;
+      var a;
+      if(x.st==='dispo')a=addDays(t,1);
+      else{
+        if(!x.d)return;
+        var su=rySunday(x.d);X.sun[su]=(X.sun[su]||0)+1;
+        a=addDays(su,1);                       // ronéos le dimanche soir → on apprend dès le lundi
+        if(a<=t)a=addDays(t,1);
+      }
+      if(a>X.cut)a=X.cut;
+      X.arr[a]=(X.arr[a]||0)+1;X.future++;
+    });
+  });
+  // 3) Rythme minimal pour tout démarrer avant la marge (recalculé depuis le début de la journée)
+  W.forEach(function(X){
+    X.avail0=X.pend.length+X.doneToday;
+    X.rem=X.avail0+X.future;
+    X.total=X.done+X.pend.length+X.future;
+    X.days=0;X.wsum=0;
+    for(var ds=t;ds<=X.cut;ds=addDays(ds,1)){var wt=ryWeight(ds,X.w,fac);X.wsum+=wt;if(wt>0)X.days++;}
+    var feasible=function(r){
+      var av=X.avail0,done=0;
+      for(var ds=t;ds<=X.cut;ds=addDays(ds,1)){if(X.arr[ds])av+=X.arr[ds];done=Math.min(av,done+r*ryWeight(ds,X.w,fac));}
+      return done>=X.rem-1e-6;
+    };
+    if(!X.rem)X.r=0;
+    else if(t>X.cut||!X.wsum)X.r=Infinity;
+    else{var lo=0,hi=40;if(!feasible(hi))X.r=Infinity;else{for(var k=0;k<32;k++){var m=(lo+hi)/2;if(feasible(m))hi=m;else lo=m;}X.r=hi;}}
+    X.state=!X.rem?'fini':t>X.cut?'qcm':X.r<=RY_OK?'ok':X.r<=RY_JUSTE?'juste':'retard';
+    X.wt=ryWeight(t,X.w,fac);
+    X.n=X.state==='ok'||X.state==='juste'||X.state==='retard'?Math.min(X.avail0,RY_MAX,ryRound((isFinite(X.r)?X.r:X.avail0)*X.wt)):0;
+    X.dl=addDays(X.w.exam,-8);if(X.dl>X.cut)X.dl=X.cut;      // pour caser J1, J3 et J7 avant le partiel
+  });
+  // 4) Jour léger : seulement les J s'il y en a beaucoup, sauf urgence
+  var due=allDue().filter(function(x){return x.entry.date<=t;}),jN=due.length,tag=ryDayTag(t),note='';
+  var urgent=W.filter(function(X){return X.state==='retard'||(X.pend.length&&X.state!=='qcm'&&X.state!=='fini'&&X.dl<=addDays(t,1));});
+  if(tag==='leger'&&jN>RY_J_BEAUCOUP){
+    if(!urgent.length){W.forEach(function(X){X.n=0;});note='Journée légère : seulement tes J';}
+    else{W.forEach(function(X){X.n=X===urgent[0]?Math.min(1,X.n||1):0;});note='Journée légère, mais un cours est urgent';}
+  }else if(tag==='leger')note='Journée légère';
+  else if(tag==='repos')note='Repos aujourd\'hui';
+  else if(tag==='exam')note='Jour de partiel';
+  if(!note){var qx=W.filter(function(X){return X.state==='qcm';})[0];if(qx)note=qx.w.label+' : QCM et annales';}
+  // 5) Les cours proposés, en variant les matières
+  var skip=rySkipGet(),recent={},y=addDays(t,-1),rec={};
+  LF().forEach(function(f){(f.decks||[]).forEach(function(d){(d.sessions||[]).forEach(function(s){var sd=tsToStr(s.date);if(sd===t||sd===y)recent[f.id]=1;});});});
+  W.forEach(function(X){
+    var left=Math.max(0,X.n-X.doneToday);
+    var cand=X.pend.filter(function(p){return !skip[p.d.id];}).sort(function(a,b){
+      return (recent[a.f.id]?1:0)-(recent[b.f.id]?1:0)||((a.fd||'9')<(b.fd||'9')?-1:(a.fd||'9')>(b.fd||'9')?1:0);
+    });
+    X.picks=[];var used={};
+    while(X.picks.length<left&&cand.length){
+      var i=-1;for(var q=0;q<cand.length;q++)if(!used[cand[q].f.id]){i=q;break;}
+      if(i<0)i=0;var p=cand.splice(i,1)[0];used[p.f.id]=1;X.picks.push(p);rec[p.d.id]=X;
+    }
+  });
+  // 6) J qui peuvent attendre demain (cours bien acquis) les jours chargés
+  var wait={},nTot=W.reduce(function(a,X){return a+X.n;},0);
+  if(nTot>0&&jN>RY_J_BEAUCOUP)due.forEach(function(x){
+    if(x.late>0)return;
+    var dn=(x.deck.plan||[]).filter(function(e){return e.done;}).length;
+    if(dn>=3&&!deckFragile(x.deck))wait[x.deck.id]=1;
+  });
+  return {t:t,W:W,fac:fac,jN:jN,tag:tag,note:note,rec:rec,wait:wait,n:nTot,
+    doneToday:W.reduce(function(a,X){return a+Math.min(X.doneToday,X.n);},0),hasSuivi:!!S.length};
+}
+var RY_ST={ok:['dans les temps','ok'],juste:['un peu juste','juste'],retard:['en retard','retard'],fini:['tout est démarré','ok'],qcm:['QCM et annales','qcm']};
+function ryPill(X,long){var s=RY_ST[X.state];return '<span class="ry-pill '+s[1]+'">'+(long?X.w.label:X.w.short)+' · '+s[0]+'</span>';}
+function renderHomeRythme(){
+  var el=document.getElementById('homeRythme');if(!el)return;
+  try{RY=ryCompute();}catch(e){console.error('rythme',e);RY=null;}
+  if(!RY||!RY.W.length){el.innerHTML='';return;}
+  var R=RY,live=R.W.filter(function(X){return X.n>0;});
+  var ring=R.n?(function(){var a=0,parts=[];R.W.forEach(function(X){if(!X.n)return;var b=a+X.n/R.n*100;parts.push('var(--w'+X.w.id+') '+a+'% '+b+'%');a=b;});return 'conic-gradient('+parts.join(',')+')';})():'var(--fill)';
+  var left=R.n-R.doneToday,title,sub;
+  if(!R.n){title=R.note||(R.W.every(function(X){return X.state==='qcm'||X.state==='fini';})?'Phase QCM et annales':'Pas de nouveau cours aujourd\'hui');sub=R.jN?R.jN+' J à faire':'Rien à réviser';}
+  else if(left<=0){title='Objectif du jour atteint';sub=R.n+' cours démarré'+(R.n>1?'s':'')+(R.jN?' · '+R.jN+' J restants':'');}
+  else{title='cours conseillé'+(R.n>1?'s':'')+' aujourd\'hui';sub=live.map(function(X){return X.n+' '+X.w.short;}).join(' · ')+(R.jN?' · + '+R.jN+' J':'')+(R.doneToday?' · '+R.doneToday+' fait'+(R.doneToday>1?'s':''):'');}
+  el.innerHTML='<button class="ry-banner" onclick="openRythme()" aria-label="Voir le rythme dans le Planning">'+
+    '<span class="ry-ring" style="background:'+ring+'"><b>'+(R.n?(left>0?left:'✓'):'0')+'</b></span>'+
+    '<span class="ry-main"><span class="ry-t">'+title+'</span><span class="ry-s">'+sub+(R.n&&R.note?' · '+R.note:'')+'</span>'+
+    '<span class="ry-pills">'+R.W.map(function(X){return ryPill(X,false);}).join('')+'</span></span>'+
+    '<span class="ry-chev">'+ic('chevron-right')+'</span></button>';
+}
+function openRythme(){openCalendar();var e=document.getElementById('calRythme');if(e)e.scrollIntoView({behavior:'smooth',block:'start'});}
+function renderRythmePlan(){
+  var el=document.getElementById('calRythme');if(!el)return;
+  var R;try{R=ryCompute();}catch(e){console.error('rythme',e);el.innerHTML='';return;}
+  if(!R.W.length){el.innerHTML='';return;}
+  var t=R.t,end=R.W[R.W.length-1].w.exam,days=[];for(var ds=t;ds<=end;ds=addDays(ds,1))days.push(ds);
+  // Frise : une ligne par vague, une case par jour
+  var cell=function(X,ds){
+    if(ds===X.w.exam)return 'x';if(ds>X.w.exam)return '';
+    var tag=ryDayTag(ds);if(tag==='exam'||tag==='repos')return 'r';
+    if(ds>X.cut)return 'q';
+    var wt=ryWeight(ds,X.w,R.fac);if(!wt)return '';
+    if(tag==='leger')return 'l';
+    return R.W.some(function(E){return E.w.exam<X.w.exam&&ds<=E.cut;})?'dz':'a';
+  };
+  var lanes=R.W.map(function(X){
+    return '<div class="ry-lane"><span class="ry-ln" style="color:var(--w'+X.w.id+')">'+X.w.short+'</span><div class="ry-bar w'+X.w.id+'">'+days.map(function(ds){var c=cell(X,ds);return '<i class="'+c+'"></i>';}).join('')+'</div></div>';
+  }).join('');
+  var marks='<div class="ry-marks"><span style="left:0">auj.</span>'+R.W.map(function(X){var p=Math.round(diffDays(t,X.w.exam)/Math.max(1,days.length-1)*100);return '<span style="left:'+p+'%">'+prettyD(X.w.exam).replace(/^\S+\s/,'')+'</span>';}).join('')+'</div>';
+  var legend='<div class="ry-legend"><span><i class="a"></i>Nouveaux cours</span><span><i class="dz"></i>Vague suivante en douceur</span><span><i class="q"></i>QCM et annales</span><span><i class="l"></i>Léger</span><span><i class="r"></i>Repos</span></div>';
+  // Aujourd'hui
+  var picks=[];R.W.forEach(function(X){X.picks.forEach(function(p){picks.push({X:X,p:p});});});
+  var todayH='<div class="ry-sub"><h4>Aujourd\'hui</h4><span>'+(R.n?R.n+' cours conseillé'+(R.n>1?'s':'')+(R.doneToday?' · '+R.doneToday+' fait'+(R.doneToday>1?'s':''):''):'')+(R.jN?' · '+R.jN+' J':'')+'</span></div>'+
+    (R.note?'<div class="ry-note">'+R.note+'</div>':'')+
+    (picks.length?'<div class="ry-picks">'+picks.map(function(x){var f=x.p.f,d=x.p.d;
+      return '<div class="ry-pick"><i class="ry-dot" style="background:var(--w'+x.X.w.id+')"></i><div class="ry-pm"><span class="ry-pf" style="color:var(--w'+x.X.w.id+')">'+esc(f.name)+' · '+x.X.w.short+'</span><span class="ry-pt">'+esc(d.name)+'</span></div>'+
+        '<button class="ry-swap" aria-label="Proposer un autre cours" title="Pas envie : autre cours" onclick="rySkip(\''+d.id+'\')">'+RY_IC.swap+'</button>'+
+        '<button class="btn btn-primary btn-sm" onclick="jumpTo(\''+f.id+'\',\''+d.id+'\')">Démarrer</button></div>';}).join('')+'</div>':
+      (R.n&&R.doneToday>=R.n?'<div class="ry-note">Objectif du jour atteint. Tu peux t\'arrêter là, ou prendre un cours d\'avance.</div>':''));
+  // Semaine
+  var week=[];
+  for(var k=0;k<7;k++){
+    var d=addDays(t,k),tag=ryDayTag(d),jn=k===0?R.jN:0;
+    if(k>0)LF().forEach(function(f){(f.decks||[]).forEach(function(dk){if(!deckPending(dk)&&(dk.plan||[]).some(function(e){return !e.done&&e.date===d;}))jn++;});});
+    var chips=R.W.map(function(X){
+      var n=k===0?X.n:(X.state==='qcm'||X.state==='fini'?0:Math.min(RY_MAX,ryRound((isFinite(X.r)?X.r:0)*ryWeight(d,X.w,R.fac))));
+      if(k>0&&tag==='leger'&&jn>RY_J_BEAUCOUP)n=0;
+      return n?'<span class="ry-chip w'+X.w.id+(k===0?' on':'')+'">'+n+' '+X.w.short+'</span>':'';
+    }).join('');
+    var ron=0;R.W.forEach(function(X){ron+=X.sun[d]||0;});
+    var info=tag==='exam'?'Partiel':tag==='repos'?(d.slice(5)==='12-25'?'Noël · repos':d.slice(5)==='01-01'?'Nouvel an · repos':'Repos'):
+      R.W.some(function(X){return d>X.cut&&d<X.w.exam;})&&!chips?'QCM et annales':
+      (tag==='leger'?'Journée légère':(R.fac[d]?R.fac[d]+' cours à la fac':'Pas de fac'))+(ron?' · ronéos ce soir (~'+ron+')':'');
+    var dd=parseD(d);
+    week.push('<div class="ry-day'+(k===0?' on':'')+'"><div class="ry-dn"><span>'+dd.toLocaleDateString('fr-FR',{weekday:'short'}).replace('.','').toUpperCase()+'</span><b>'+dd.getDate()+'</b></div><div class="ry-di">'+info+'</div>'+chips+(jn?'<span class="ry-chip j">'+jn+' J</span>':'')+'</div>');
+  }
+  // Dates limites
+  var alerts=[];R.W.forEach(function(X){
+    if(X.state==='qcm'||X.state==='fini'||!X.pend.length)return;
+    var dj=diffDays(t,X.dl);
+    if(dj<=4)alerts.push('<div class="ry-alert">'+RY_IC.clock+'<span>'+(dj>=0?'<b>'+X.pend.length+' cours de '+X.w.label.toLowerCase()+'</b> à démarrer avant le '+prettyD(X.dl)+' pour avoir J1, J3 et J7 avant le partiel.':'<b>'+X.pend.length+' cours de '+X.w.label.toLowerCase()+'</b> pas encore démarrés : leurs J seront resserrés avant le partiel.')+'</span></div>');
+  });
+  // Le calcul, en clair
+  var expl=R.W.map(function(X){
+    if(X.state==='fini')return '<li><b>'+X.w.label+'</b> : tous les cours sont démarrés.</li>';
+    if(X.state==='qcm')return '<li><b>'+X.w.label+'</b> : plus de nouveaux cours, place aux QCM et aux annales'+(X.pend.length?' ('+X.pend.length+' cours non démarrés)':'')+'.</li>';
+    return '<li><b>'+X.w.label+'</b> : '+X.rem+' cours à démarrer'+(X.future?' (dont '+X.future+' pas encore arrivés)':'')+', '+X.days+' jours d\'ici le '+prettyD(X.cut)+' · environ '+(isFinite(X.r)?X.r.toFixed(1).replace('.',','):'—')+' par journée normale.</li>';
+  }).join('');
+  el.innerHTML='<div class="panel-card ry-plan">'+
+    '<div class="panel-head"><h3>Jusqu\'aux partiels</h3><span class="ry-pills">'+R.W.map(function(X){return ryPill(X,true);}).join('')+'</span></div>'+
+    lanes+marks+legend+todayH+
+    '<div class="ry-sub"><h4>Cette semaine</h4><span>cours conseillés par jour</span></div><div class="ry-week">'+week.join('')+'</div>'+
+    alerts.join('')+
+    '<details class="ry-how"><summary>Comment c\'est calculé</summary><ul>'+expl+'</ul><p>Les ronéos d\'une semaine arrivent le dimanche soir : les cours pas encore arrivés sont comptés à partir du lundi suivant. Rien n\'est obligatoire : si tu sautes un jour, le reste se répartit sur les jours suivants.'+(R.hasSuivi?'':' Relie ton Suivi pour compter aussi les cours à venir.')+'</p></details>'+
+    '</div>';
+}
+
+// ════════════════════════════════════════
 // SUIVI DU SEMESTRE (passerelle Apps Script)
 // ════════════════════════════════════════
 function openSuivi(){showScreen('sSuivi');renderSuivi();var c=suiviCache();if(suiviCfg().url&&(!c||Date.now()-(c.ts||0)>600000))syncSuivi(true);}
@@ -4349,6 +4651,7 @@ function syncSuivi(silent){
     flushRev();
     if(!silent)toast('Suivi à jour ✓');
     renderSuivi();renderSemesterMini();renderNewRoneos();
+    try{renderHomeToday();renderRythmePlan();}catch(e){console.error(e);}
   }).catch(function(e){
     console.error(e);
     if(!silent)toast('Suivi inaccessible — vérifie le lien /exec, la clé et le déploiement (accès : Tout le monde)');
@@ -4890,6 +5193,7 @@ function renderCalKpi(){
 }
 
 function renderCal(){
+  renderRythmePlan();
   renderCalKpi();
   if(CAL.view==='month')renderCalMonth();else if(CAL.view==='week')renderCalWeek();else renderCalAgenda();
 }

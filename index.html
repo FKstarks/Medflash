@@ -898,6 +898,7 @@ body.light .ry-chip.on{color:#fff}
 .ry-alert svg{color:var(--ye);margin-top:2px}
 .ry-how{margin-top:14px;font-size:13px;color:var(--tx2);line-height:1.45}
 .ry-how summary{cursor:pointer;color:var(--ac);font-weight:600}
+@media(min-width:900px){.ry-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}.ry-banner{padding:16px 18px}.ry-t{font-size:17px}}
 .ry-how ul{margin:8px 0;padding-left:18px}.ry-how li{margin:4px 0}.ry-how p{margin:6px 0 0}
 .hero-h h3,.hcount,.hero-h .mini-link{white-space:nowrap}
 @media(max-width:640px){.hnav{display:none!important}}
@@ -4589,9 +4590,9 @@ function renderRythmePlan(){
   }).join('');
   el.innerHTML='<div class="panel-card ry-plan">'+
     '<div class="panel-head"><h3>Jusqu\'aux partiels</h3><span class="ry-pills">'+R.W.map(function(X){return ryPill(X,true);}).join('')+'</span></div>'+
-    lanes+marks+legend+todayH+
-    '<div class="ry-sub"><h4>Cette semaine</h4><span>cours conseillés par jour</span></div><div class="ry-week">'+week.join('')+'</div>'+
-    alerts.join('')+
+    lanes+marks+legend+
+    '<div class="ry-cols"><div>'+todayH+alerts.join('')+'</div>'+
+    '<div><div class="ry-sub"><h4>Cette semaine</h4><span>cours conseillés par jour</span></div><div class="ry-week">'+week.join('')+'</div></div></div>'+
     '<details class="ry-how"><summary>Comment c\'est calculé</summary><ul>'+expl+'</ul><p>Les ronéos d\'une semaine arrivent le dimanche soir : les cours pas encore arrivés sont comptés à partir du lundi suivant. Rien n\'est obligatoire : si tu sautes un jour, le reste se répartit sur les jours suivants.'+(R.hasSuivi?'':' Relie ton Suivi pour compter aussi les cours à venir.')+'</p></details>'+
     '</div>';
 }
